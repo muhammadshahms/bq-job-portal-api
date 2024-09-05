@@ -14,7 +14,9 @@ const sendOTPEmail = async (email, otp) => {
         from: process.env.NODEMAILOR_EMAIL,
         to: email,
         subject: 'Your OTP Code',
-        text: `Your OTP code is ${otp}`
+        html: `<p>Enter <b>${otp}</b> in the app to verify your email address and complete the verification process</p>
+        <p>This OTP will <b>expire in 1 minute</b></p>
+        `
     };
 
     await transporter.sendMail(mailOptions);
@@ -27,7 +29,7 @@ const twilioClient = twilio(accountSid, authToken);
 const sendOTPSMS = async (phoneNumber, otp) => {
     try {
         const message = await twilioClient.messages.create({
-            body: `Your OTP is ${otp}`,
+            body: `Enter ${otp} in the app to verify your phone number and complete the verification process. This OTP will expire in 1 minute`,
             from: process.env.TWILIO_PHONE_NUMBER,
             to: phoneNumber,
         });

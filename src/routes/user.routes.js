@@ -1,15 +1,21 @@
 import { Router } from 'express'
 import { singleAvatar, singleResume } from '../middlewares/multer.middleware.js';
-import { login, registerUser, resendOTP, verifyOTP } from '../controllers/user.controller.js';
+import { forgetPassword, login, logout, registerUser, resendOTP, verifyOTP } from '../controllers/user.controller.js';
+import { verifyJWT } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
-router.get("/", (req, res)=> {
+router.get("/", (req, res) => {
     res.send("Hello, World!");
 })
 router.post('/register', singleResume, registerUser)
 router.post('/verify', verifyOTP);
 router.post('/login', login)
-router.post('/resend-otp', resendOTP)
+router.put('/resend-otp', resendOTP)
+router.put('/forget-password', forgetPassword)
+
+// Secure routes
+
+router.get('/logout', verifyJWT, logout)
 
 export default router;

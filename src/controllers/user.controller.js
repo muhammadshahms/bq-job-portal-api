@@ -3,9 +3,12 @@ import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from '../utils/ApiResponse.js'
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import { generateOTP } from "../utils/helper.js";
+import { generateOTP, validatePassword } from "../utils/helper.js";
 import { sendOTPEmail, sendOTPSMS } from "../utils/features.js"
 import { TemporaryUser } from "../models/TemporaryUser.model.js";
+
+// TODO: Otp send with email and number
+// TODO: Password Validation
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -28,6 +31,12 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     if (!phoneNumber || !password || !confirmPassword)
         return next(new ApiError(400, "All fields are required"));
+
+    const { isValid, errorMessage } = validatePassword(password);
+
+    if (!isValid) {
+        return next(new ApiError(400, errorMessage));
+    }
 
     if (password !== confirmPassword)
         return next(new ApiError(400, "Passwords do not match"));
@@ -99,10 +108,18 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "Phone number and OTP are required"));
     }
 
-    const tempUser = await TemporaryUser.findOne({ phoneNumber, otp, otpExpires: { $gt: Date.now() } });
+    const tempUser = await TemporaryUser.findOne({ phoneNumber });
 
     if (!tempUser) {
-        return next(new ApiError(400, "Invalid OTP or OTP expired"));
+        return next(new ApiError(400, "User not found"));
+    }
+
+    if (tempUser.otpExpires < Date.now()) {
+        return next(new ApiError(400, "OTP has expired"));
+    }
+
+    if (tempUser.otp !== otp) {
+        return next(new ApiError(400, "Invalid OTP"));
     }
 
     const resume = {
@@ -116,6 +133,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
         resume,
         otp: tempUser.otp,
         otpExpires: tempUser.otpExpires,
+        isVerified: true,
     });
 
     await TemporaryUser.deleteOne({ phoneNumber });
@@ -243,10 +261,102 @@ const logout = asyncHandler(async (req, res, next) => {
 
 })
 
+// TODO: Test the below routes
+const forgetPassword = asyncHandler(async (req, res, next) => {
+    const { phoneNumber } = req.body;
+
+    if (!phoneNumber) {
+        return next(new ApiError(400, "Phone Number required"));
+    }
+
+    const user = await User.findOne({ phoneNumber });
+
+    if (!user) {
+        return next(new ApiError(401, "User not found"));
+    }
+
+    const otp = generateOTP();
+    const otpExpires = Date.now() + 60 * 1000;
+
+    user.otp = otp;
+    user.otpExpires = otpExpires;
+
+    user.isVerified = false;
+
+    await user.save();
+
+    await sendOTPSMS(phoneNumber, otp);
+
+    return res.status(200).json({
+        message: 'OTP sent successfully',
+    });
+});
+
+const verifyForgetOTP = asyncHandler(async (req, res, next) => {
+    const { phoneNumber, otp } = req.body;
+
+    if (!phoneNumber || !otp) {
+        return next(new ApiError(400, "Phone number and OTP are required"));
+    }
+
+    const user = await User.findOne({ phoneNumber });
+
+    if (!user) {
+        return next(new ApiError(400, "User not found"));
+    }
+
+    if (user.otpExpires < Date.now()) {
+        return next(new ApiError(400, "OTP has expired"));
+    }
+
+    if (user.otp !== otp) {
+        return next(new ApiError(400, "Invalid OTP"));
+    }
+
+    user.isVerified = true;
+    await user.save();
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, {}, "OTP verified successfully, you can now reset your password")
+        );
+});
+
+const updatePassword = asyncHandler(async (req, res, next) => {
+    const { newPassword, confirmPassword } = req.body;
+
+    if ( !newPassword || !confirmPassword) {
+        return next(new ApiError(400, "All fields are required"));
+    }
+
+    if (newPassword !== confirmPassword) {
+        return next(new ApiError(400, "Passwords do not match"));
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+        return next(new ApiError(401, "User not found"));
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, {}, "Password updated successfully")
+        );
+});
+
 export {
     registerUser,
     verifyOTP,
     login,
     resendOTP,
-    logout
+    logout,
+    forgetPassword,
+    verifyForgetOTP,
+    updatePassword
 }
