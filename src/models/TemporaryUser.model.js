@@ -3,9 +3,9 @@ import { Schema, model } from "mongoose";
 
 const TemporaryUserSchema = new Schema({
     email: {
-        type: Number,
+        type: String,
         // required: true,
-        lowercase: true,
+        // lowercase: true,
         // index: true // For better optimization in searching context
     },
     title: {
@@ -14,7 +14,7 @@ const TemporaryUserSchema = new Schema({
     },
     phoneNumber: {
         type: String,
-        required: true,
+        // required: true,
         // unique: true,
         // index: true // For better optimization in searching context
     },

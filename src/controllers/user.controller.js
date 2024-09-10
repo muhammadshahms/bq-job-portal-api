@@ -6,9 +6,10 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { generateOTP, validatePassword } from "../utils/helper.js";
 import { sendOTPEmail, sendOTPSMS } from "../utils/features.js"
 import { TemporaryUser } from "../models/TemporaryUser.model.js";
+import { hash } from "bcrypt";
 
 // TODO: Otp send with email and number
-// TODO: Password Validation
+// TODO: OTP encryption
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -27,9 +28,9 @@ const generateAccessAndRefreshTokens = async (userId) => {
 }
 
 const registerUser = asyncHandler(async (req, res, next) => {
-    const { phoneNumber, password, confirmPassword } = req.body;
+    const { email, password, confirmPassword } = req.body;
 
-    if (!phoneNumber || !password || !confirmPassword)
+    if (!email || !password || !confirmPassword)
         return next(new ApiError(400, "All fields are required"));
 
     const { isValid, errorMessage } = validatePassword(password);
@@ -41,7 +42,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
     if (password !== confirmPassword)
         return next(new ApiError(400, "Passwords do not match"));
 
-    const existingTempUser = await TemporaryUser.findOne({ phoneNumber });
+    const existingTempUser = await TemporaryUser.findOne({ email });
 
     if (existingTempUser) {
         if (existingTempUser.otpExpires < Date.now()) {
@@ -53,7 +54,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
             existingTempUser.otpExpires = otpExpires;
             await existingTempUser.save();
 
-            await sendOTPSMS(phoneNumber, otp);
+            await sendOTPEmail(email, otp);
 
             return res.status(200).json(
                 new ApiResponse(
@@ -85,30 +86,30 @@ const registerUser = asyncHandler(async (req, res, next) => {
     };
 
     await TemporaryUser.create({
-        phoneNumber,
+        email,
         password,
         resume,
         otp,
         otpExpires,
     });
 
-    await sendOTPSMS(phoneNumber, otp);
+    await sendOTPEmail(email, otp);
 
     return res.status(201).json(
         new ApiResponse(
             201,
-            "User registered successfully. OTP sent to your phoneNumber. Please verify it.")
+            "User registered successfully. OTP sent to your email. Please verify it.")
     );
 });
 
 const verifyOTP = asyncHandler(async (req, res, next) => {
-    const { phoneNumber, otp } = req.body;
+    const { email, otp } = req.body;
 
-    if (!phoneNumber || !otp) {
+    if (!email || !otp) {
         return next(new ApiError(400, "Phone number and OTP are required"));
     }
 
-    const tempUser = await TemporaryUser.findOne({ phoneNumber });
+    const tempUser = await TemporaryUser.findOne({ email });
 
     if (!tempUser) {
         return next(new ApiError(400, "User not found"));
@@ -128,7 +129,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     };
 
     const user = await User.create({
-        phoneNumber: tempUser.phoneNumber,
+        email: tempUser.email,
         password: tempUser.password,
         resume,
         otp: tempUser.otp,
@@ -136,19 +137,30 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
         isVerified: true,
     });
 
-    await TemporaryUser.deleteOne({ phoneNumber });
+    const newUser = {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        resume: {
+            public_id: user.resume.public_id,
+            url: user.resume.url,
+        },
+        isVerified: user.isVerified,
+    }
 
-    res.status(200).json(new ApiResponse(200, { user }, "User verified successfully"));
+    await TemporaryUser.deleteOne({ email });
+
+    res.status(200).json(new ApiResponse(200, { newUser }, "User verified successfully"));
 });
 
 const login = asyncHandler(async (req, res, next) => {
 
-    const { phoneNumber, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!phoneNumber || !password)
+    if (!email || !password)
         return next(new ApiError(400, "All fields are required"));
 
-    const user = await User.findOne({ phoneNumber });
+    const user = await User.findOne({ email });
 
     if (!user)
         return next(new ApiError(401, "User not found"));
@@ -187,16 +199,20 @@ const login = asyncHandler(async (req, res, next) => {
 })
 
 const resendOTP = asyncHandler(async (req, res, next) => {
-    const { phoneNumber } = req.body;
+    const { email } = req.body;
 
-    if (!phoneNumber) {
+    if (!email) {
         return next(new ApiError(400, "Phone Number required"));
     }
 
-    const user = await TemporaryUser.findOne({ phoneNumber });
+    const user = await TemporaryUser.findOne({ email });
 
     if (!user) {
         return next(new ApiError(401, "User Already Verified"));
+    }
+
+    if (user.otpExpires > Date.now()) {
+        return next(new ApiError(401, "OTP is still valid. Wait for a minute before resending OTP."));
     }
 
     const resendAttempts = user.resendAttempts || 0;
@@ -225,7 +241,7 @@ const resendOTP = asyncHandler(async (req, res, next) => {
 
     await user.save();
 
-    await sendOTPSMS(phoneNumber, otp);
+    await sendOTPEmail(email, otp);
 
     return res.status(200).json({
         message: 'OTP resent successfully',
@@ -261,15 +277,14 @@ const logout = asyncHandler(async (req, res, next) => {
 
 })
 
-// TODO: Test the below routes
 const forgetPassword = asyncHandler(async (req, res, next) => {
-    const { phoneNumber } = req.body;
+    const { email } = req.body;
 
-    if (!phoneNumber) {
+    if (!email) {
         return next(new ApiError(400, "Phone Number required"));
     }
 
-    const user = await User.findOne({ phoneNumber });
+    const user = await User.findOne({ email });
 
     if (!user) {
         return next(new ApiError(401, "User not found"));
@@ -285,7 +300,7 @@ const forgetPassword = asyncHandler(async (req, res, next) => {
 
     await user.save();
 
-    await sendOTPSMS(phoneNumber, otp);
+    await sendOTPEmail(email, otp);
 
     return res.status(200).json({
         message: 'OTP sent successfully',
@@ -293,13 +308,13 @@ const forgetPassword = asyncHandler(async (req, res, next) => {
 });
 
 const verifyForgetOTP = asyncHandler(async (req, res, next) => {
-    const { phoneNumber, otp } = req.body;
+    const { email, otp } = req.body;
 
-    if (!phoneNumber || !otp) {
+    if (!email || !otp) {
         return next(new ApiError(400, "Phone number and OTP are required"));
     }
 
-    const user = await User.findOne({ phoneNumber });
+    const user = await User.findOne({ email });
 
     if (!user) {
         return next(new ApiError(400, "User not found"));
@@ -324,30 +339,35 @@ const verifyForgetOTP = asyncHandler(async (req, res, next) => {
 });
 
 const updatePassword = asyncHandler(async (req, res, next) => {
-    const { newPassword, confirmPassword } = req.body;
+    const { newPassword, confirmPassword, email, otp } = req.body;
 
-    if ( !newPassword || !confirmPassword) {
+    if (!newPassword || !confirmPassword || !email || !otp) {
         return next(new ApiError(400, "All fields are required"));
+    }
+
+    const { isValid, errorMessage } = validatePassword(newPassword);
+
+    if (!isValid) {
+        return next(new ApiError(400, errorMessage));
     }
 
     if (newPassword !== confirmPassword) {
         return next(new ApiError(400, "Passwords do not match"));
     }
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findOneAndUpdate({ email, otp }, {
+        password: await hash(newPassword, 10),
+        isVerified: true,
+    }, { new: true });
 
     if (!user) {
         return next(new ApiError(401, "User not found"));
     }
 
-    user.password = newPassword;
-    await user.save();
-
     return res
         .status(200)
-        .json(
-            new ApiResponse(200, {}, "Password updated successfully")
-        );
+        .json(new ApiResponse(200, {}, "Password updated successfully"));
+
 });
 
 export {
@@ -358,5 +378,5 @@ export {
     logout,
     forgetPassword,
     verifyForgetOTP,
-    updatePassword
+    updatePassword,
 }

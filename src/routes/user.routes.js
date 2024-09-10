@@ -1,6 +1,15 @@
 import { Router } from 'express'
 import { singleAvatar, singleResume } from '../middlewares/multer.middleware.js';
-import { forgetPassword, login, logout, registerUser, resendOTP, verifyOTP } from '../controllers/user.controller.js';
+import {
+    forgetPassword,
+    login,
+    logout,
+    registerUser,
+    resendOTP,
+    updatePassword,
+    verifyForgetOTP,
+    verifyOTP
+} from '../controllers/user.controller.js';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -13,6 +22,8 @@ router.post('/verify', verifyOTP);
 router.post('/login', login)
 router.put('/resend-otp', resendOTP)
 router.put('/forget-password', forgetPassword)
+router.put('/verify-forget', verifyForgetOTP)
+router.put('/update-password', updatePassword)
 
 // Secure routes
 

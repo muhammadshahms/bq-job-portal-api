@@ -28,6 +28,10 @@ const companySchema = new Schema({
         type: String,
         required: [true, "Password is required"]
     },
+    noOfEmployees: {
+        type: Number,
+        default: 0
+    },
     otp: {
         type: String,
     },

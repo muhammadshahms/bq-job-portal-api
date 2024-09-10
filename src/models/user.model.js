@@ -3,16 +3,27 @@ import jwt from "jsonwebtoken";
 import { hash, compare } from 'bcrypt';
 
 const userSchema = new Schema({
+    banoQabilId: {
+        type: String,
+        // required: true,
+        // unique: true,
+    },
+    fullName: {
+        type: String,
+    },
     email: {
-        type: Number,
+        type: String,
         // required: true,
         // unique: false,
-        lowercase: true,
+        // lowercase: true,
         // index: true // For better optimization in searching context
     },
     title: {
         type: String,
         lowercase: true,
+    },
+    gender: {
+        type: String,
     },
     phoneNumber: {
         type: String,
