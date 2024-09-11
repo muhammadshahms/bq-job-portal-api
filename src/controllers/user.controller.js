@@ -360,7 +360,7 @@ const updatePassword = asyncHandler(async (req, res, next) => {
         isVerified: true,
     }, { new: true });
 
-    if (!user) {
+     if (!user) {
         return next(new ApiError(401, "User not found"));
     }
 
@@ -369,6 +369,29 @@ const updatePassword = asyncHandler(async (req, res, next) => {
         .json(new ApiResponse(200, {}, "Password updated successfully"));
 
 });
+const skillsMatch = asyncHandler(async (req, res, next) => {
+    try {
+        const { skills } = req.body;
+        if (!skills) {
+            return res.status(400).json({ message: 'Skills query parameter is required' });
+        }
+
+        const skillArray = skills.split(',');
+        const matchingUsers = await User.find({
+            skills: { $in: skillArray }
+        });
+
+        if (matchingUsers.length === 0) {
+            return res.status(404).json({ message: 'No users found with matching skills' });
+        }
+
+        res.status(200).json(matchingUsers);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 
 export {
     registerUser,
@@ -379,4 +402,5 @@ export {
     forgetPassword,
     verifyForgetOTP,
     updatePassword,
+    skillsMatch
 }

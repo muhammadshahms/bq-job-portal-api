@@ -8,7 +8,9 @@ import {
     resendOTP,
     updatePassword,
     verifyForgetOTP,
-    verifyOTP
+    verifyOTP,
+    skillsMatch
+
 } from '../controllers/user.controller.js';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
 
@@ -24,6 +26,8 @@ router.put('/resend-otp', resendOTP)
 router.put('/forget-password', forgetPassword)
 router.put('/verify-forget', verifyForgetOTP)
 router.put('/update-password', updatePassword)
+router.get('/Jobdata',skillsMatch)
+
 
 // Secure routes
 

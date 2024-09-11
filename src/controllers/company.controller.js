@@ -223,9 +223,10 @@ const resendOTP = asyncHandler(async (req, res, next) => {
     });
 });
 
+
 export {
     register,
     verifyOTP,
     login,
-    resendOTP
+    resendOTP,
 }

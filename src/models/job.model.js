@@ -1,6 +1,6 @@
-import { Schema, model } from 'mongoose'
+import { Schema, model, mongoose } from 'mongoose'
 
-const jobSchema = new Schema({
+const jobSchema = new mongoose.Schema({
     company: [
         {
             type: Schema.Types.ObjectId,
@@ -91,4 +91,4 @@ const jobSchema = new Schema({
     },
 }, { timestamps: true });
 
-export const Job = model("Job", jobSchema)
+export const Job = mongoose.model("Job", jobSchema);

@@ -11,10 +11,11 @@ app.use(cookieParser());
 
 // Routes
 
-import { userRoutes, companyRoutes } from './routes/index.js'
+import { userRoutes, companyRoutes, jobRoutes} from './routes/index.js'
 
 app.use('/api/v1/user', userRoutes)
 app.use('/api/v1/company', companyRoutes)
+app.use('/api/v1/jobs', jobRoutes)
 
 app.use(errorMiddleware)
 
