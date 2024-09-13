@@ -59,7 +59,7 @@ const jobSchema = new mongoose.Schema({
         default: false,
     },
     documents_required: {
-        type: Boolean,
+        type: String,
         default: true,
     },
     company_mail: { // email address for receiving updates

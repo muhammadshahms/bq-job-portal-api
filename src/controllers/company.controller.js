@@ -84,14 +84,17 @@ const register = asyncHandler(async (req, res, next) => {
 });
 
 const verifyOTP = asyncHandler(async (req, res, next) => {
+    
     const { email, otp } = req.body;
-
     if (!email || !otp) {
         return next(new ApiError(400, "Email and OTP are required"));
     }
 
     const tempCompany = await TemporaryCompany.findOne({ email });
-
+    
+    if (tempCompany.otp !== otp ) {
+        return next(new ApiError(400, "Invalid OTP"));
+    }
     if (!tempCompany) {
         return next(new ApiError(400, "Company not found"));
     }
@@ -100,9 +103,6 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "OTP has expired"));
     }
 
-    if (tempCompany.otp !== otp) {
-        return next(new ApiError(400, "Invalid OTP"));
-    }
 
     const company = await Company.create({
         email: tempCompany.email,

@@ -2,6 +2,8 @@ import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from '../utils/ApiResponse.js'
 import { User } from "../models/user.model.js";
+import { Company } from "../models/company.model.js";
+import { Job } from "../models/job.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { generateOTP, validatePassword } from "../utils/helper.js";
 import { sendOTPEmail, sendOTPSMS } from "../utils/features.js"
@@ -106,7 +108,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-        return next(new ApiError(400, "Phone number and OTP are required"));
+        return next(new ApiError(400, "Email and OTP are required"));
     }
 
     const tempUser = await TemporaryUser.findOne({ email });
@@ -119,7 +121,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "OTP has expired"));
     }
 
-    if (tempUser.otp !== otp) {
+    if (tempUser.otp ===!otp) {
         return next(new ApiError(400, "Invalid OTP"));
     }
 
@@ -382,13 +384,77 @@ const skillsMatch = asyncHandler(async (req, res, next) => {
         });
 
         if (matchingUsers.length === 0) {
-            return res.status(404).json({ message: 'No users found with matching skills' });
+            return res.status(404).json({ message: `No users found with ${skills} skills` });
         }
 
         res.status(200).json(matchingUsers);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+// const userProfile = asyncHandler(async (req, res) => {
+//     const id = req.body.id;
+//     if (!id) {
+//         return res.status(400).json({ message: 'User ID is required' });
+//     }
+//     const user = await User.findById(id).select('-password -refreshToken'); // exclude password and refreshToken
+//     if (!user) {
+//         return res.status(404).json({ message: 'User not found' });
+//     }
+
+   
+//     res.json(user);
+//     // res.json(req.user);
+//     // res.json(req.user._id);
+//     // res.json(req.user.refreshToken);
+
+// })
+const companyAndJob = asyncHandler(async (req, res, next) => {
+    // Get pagination parameters from the query string, default to page 1 and 10 items per page
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 3;
+
+    // Calculate the number of items to skip
+    const skip = (page - 1) * limit;
+
+    // Fetch company and job data with pagination
+    const companys = await Company.find().skip(skip).limit(limit);
+    const jobs = await Job.find().skip(skip).limit(limit);
+
+    // Check if either companys or jobs is not found
+    if (!companys.length && !jobs.length) {
+        return next(new ApiError(404, `No companies or jobs found`));
+    }
+
+    // Get total counts for companies and jobs
+    const totalCompanies = await Company.countDocuments();
+    const totalJobs = await Job.countDocuments();
+
+    // Calculate total pages
+    const totalCompanyPages = Math.ceil(totalCompanies / limit);
+    const totalJobPages = Math.ceil(totalJobs / limit);
+
+    // Return the response with both company and job data, and pagination info
+    return res.status(200).json(
+        new ApiResponse(200,{
+            companies: companys,
+            jobs: jobs,
+            companyPagination: {
+                totalCount: totalCompanies,
+                totalPages: totalCompanyPages,
+                currentPage: page,
+                itemsPerPage: limit,
+            },
+            jobPagination: {
+                totalCount: totalJobs,
+                totalPages: totalJobPages,
+                currentPage: page,
+                itemsPerPage: limit,
+            },
+        },
+        `Data fetched successfully`
+    )
+    );
 });
 
 
@@ -402,5 +468,7 @@ export {
     forgetPassword,
     verifyForgetOTP,
     updatePassword,
-    skillsMatch
-}
+    skillsMatch,
+    // userProfile
+    companyAndJob
+ };

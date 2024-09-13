@@ -3,13 +3,21 @@ import jwt from "jsonwebtoken";
 import { hash, compare } from 'bcrypt';
 
 const userSchema = new Schema({
+    avatar: {
+        public_id: {
+            type: String,
+        },
+        url: {
+            type: String,
+        }
+    },
+    fullName: {
+        type: String,
+    },
     banoQabilId: {
         type: String,
         // required: true,
         // unique: true,
-    },
-    fullName: {
-        type: String,
     },
     email: {
         type: String,
@@ -18,26 +26,49 @@ const userSchema = new Schema({
         // lowercase: true,
         // index: true // For better optimization in searching context
     },
-    title: {
-        type: String,
-        lowercase: true,
-    },
-    gender: {
-        type: String,
-    },
+    
+    // title: {
+    //     type: String,
+    //     lowercase: true,
+    // },
     phoneNumber: {
         type: String,
         // required: true,
         // unique: true,
         // index: true // For better optimization in searching context
     },
-    avatar: {
-        public_id: {
-            type: String,
-        },
-        url: {
-            type: String,
-        }
+    gender: {
+        type: String,
+    },
+    nationality: {
+        type: String,
+    },
+    address: {
+        type: String,
+    },
+    preferredJob: {
+        type: String,
+    },
+    workPreference: {
+        type: String,
+        enum: ['remote', 'onsite', 'hybrid'],
+        //   required: true,
+    },
+    availability:{
+        type: String,
+        enum: ['full_time', 'internship', 'part_time', 'contract'],
+        //   required: true,
+    },
+    // portfolio:{
+    //     type: String,
+    //         required: true,
+    // },
+    // linkedIn:{
+    //     type: String,
+    //         required: true,
+    // },
+    education:{
+        type: String,
     },
     resume: {
         public_id: {
