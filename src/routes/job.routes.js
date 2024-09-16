@@ -1,19 +1,25 @@
 import { Router } from 'express';
-import { createJob, 
-         deleteJob, 
-         getJobById, 
-         getJobs, 
-         getJobByCompany
- } from '../controllers/job.controller.js';
+import {
+        createJob,
+        deleteJob,
+        getJobByCompany,
+        getJobById,
+        getJobs,
+        getDraftJobs,
+        saveDraftJob,
+} from '../controllers/job.controller.js';
 import { verifyCompany } from '../middlewares/auth.middleware.js';
 
 
 const router = Router();
 router.post('/create-job', verifyCompany, createJob);
-router.post('/jobs', getJobs);
-router.post('/jobs:id', getJobById);
-router.post('/jobs:name', getJobByCompany);
+router.get('/jobs', getJobs);
+router.get('/jobs:id', getJobById);
+router.get('/jobs:name', getJobByCompany);
 router.post('/delete-job', deleteJob);
+router.get('/drafts', getDraftJobs);
+router.post('/save-draft/:id?', saveDraftJob); // Use the ID param for updating drafts
+
 
 
 export default router;
