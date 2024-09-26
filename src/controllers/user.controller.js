@@ -162,11 +162,11 @@ const login = asyncHandler(async (req, res, next) => {
     if (!email || !password)
         return next(new ApiError(400, "All fields are required"));
 
-    const user = await User.findOne({ email });
-    const company = await company.findOne({ email });
+    // const user = await User.findOne({ email });
+    // const company = await company.findOne({ email });
 
-    if (!user, company)
-        return next(new ApiError(401, "User not found"));
+    if (!User.email, !Company.email)
+        return next(new ApiError(401, "User or Company not found"));
 
     if (!user.isVerified,!company.isVerified)
         return next(new ApiError(401, "User is not verified"));

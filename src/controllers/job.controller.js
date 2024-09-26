@@ -2,7 +2,7 @@ import { Job } from "../models/job.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { seedJobs } from '../../seeder.js';
+// import { seedJobs } from '../../seeder.js';
 
 const createJob = asyncHandler(async (req, res, next) => {
     const { company, applicant, positions_available, remaining_positions, last_date, currently_hiring, job_type, job_title, gender_preference, no_of_employees, hiring_manager, documents_required, company_mail, about, education, skills, good_to_have, experience } = req.body;

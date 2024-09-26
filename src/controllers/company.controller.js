@@ -27,7 +27,10 @@ const register = asyncHandler(async (req, res, next) => {
 
     if (!email || !companyName || !password || !confirmPassword)
         return next(new ApiError(400, "All fields are required"));
-
+    const companyMail = await Company.findOne({ email:email });
+    if (email == companyMail.email) {
+        return next(new ApiError(400, ` Company already Registed  `));
+    }
     const { isValid, errorMessage } = validatePassword(password);
 
     if (!isValid) {
@@ -102,7 +105,6 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
 
     // Find the temporary company by email
     const tempCompany = await TemporaryCompany.findOne({ email });
-    const tempOtp = await TemporaryCompany.findOne({ otp });
 
     // Check if tempCompany is null
     if (!tempCompany) {
@@ -110,7 +112,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     }
 
     // Check if OTP matches
-    if (tempOtp !== otp) {
+    if (tempCompany.otp !== otp) {
         return next(new ApiError(400, `Invalid OTP ${tempCompany}`));
     }
 
