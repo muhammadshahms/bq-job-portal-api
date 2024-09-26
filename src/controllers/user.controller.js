@@ -163,21 +163,24 @@ const login = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "All fields are required"));
 
     const user = await User.findOne({ email });
+    const company = await company.findOne({ email });
 
-    if (!user)
+    if (!user, company)
         return next(new ApiError(401, "User not found"));
 
-    if (!user.isVerified)
+    if (!user.isVerified,!company.isVerified)
         return next(new ApiError(401, "User is not verified"));
 
     const isPasswordValid = await user.isPasswordCorrect(password);
+    const isCompanyPasswordValid = await company.isPasswordCorrect(password);
 
-    if (!isPasswordValid)
+    if (!isPasswordValid,isCompanyPasswordValid)
         return next(new ApiError(401, "Invalid credentials"));
 
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id,company._id);
 
     const loggedIn = await User.findById(user._id).select("-password -refreshToken");
+    const companyloggedIn = await company.findById(company._id).select("-password -refreshToken");
 
     const options = {
         httpOnly: true,
@@ -192,7 +195,7 @@ const login = asyncHandler(async (req, res, next) => {
             new ApiResponse(
                 200,
                 {
-                    user: loggedIn, accessToken, refreshToken
+                    user: loggedIn,companyloggedIn, accessToken, refreshToken
                 },
                 "User logged In Successfully"
             )
@@ -456,6 +459,14 @@ const companyAndJob = asyncHandler(async (req, res, next) => {
     )
     );
 });
+const userData= asyncHandler(async(req, res, next)=>{
+    const user = await User.find();
+    if(!user){
+        return next(new ApiError(404, "No users found"));
+    }
+    return res.status(200).json(
+        new ApiResponse(user));
+});
 
 
 
@@ -470,5 +481,6 @@ export {
     updatePassword,
     skillsMatch,
     // userProfile
-    companyAndJob
+    companyAndJob,
+    userData
  };

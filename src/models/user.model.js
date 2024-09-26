@@ -69,6 +69,7 @@ const userSchema = new Schema({
     // },
     education:{
         type: String,
+        required: true,
     },
     resume: {
         public_id: {

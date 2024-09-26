@@ -21,6 +21,7 @@ const TemporaryCompanySchema = new Schema({
     },
     otp: {
         type: String,
+        
     },
     otpExpires: {
         type: Date,

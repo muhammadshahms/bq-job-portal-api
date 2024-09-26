@@ -160,7 +160,7 @@ const getJobs = asyncHandler(async (req, res, next) => {
 });
 
 const getJobById = asyncHandler(async (req, res, next) => {
-    const { id } = req.params;
+    const { id } = req.body.id;
     // const dataId = await seedJobs();
 
 

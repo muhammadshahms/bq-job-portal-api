@@ -10,7 +10,9 @@ import {
     updatePassword,
     // userProfile,
     verifyForgetOTP,
-    verifyOTP
+    verifyOTP,
+    userData,
+    // getUserAndCompany
 } from '../controllers/user.controller.js';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
 import { singleResume } from '../middlewares/multer.middleware.js';
@@ -27,6 +29,8 @@ router.put('/forget-password', forgetPassword)
 router.put('/verify-forget', verifyForgetOTP)
 router.put('/update-password', updatePassword)
 router.get('/Jobdata/:skills',skillsMatch)
+router.get('/users',userData)
+// router.post('/getUserAndComp',userData)
 // router.get('userProfile',userProfile)
 
 

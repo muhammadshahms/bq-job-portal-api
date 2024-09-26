@@ -4,9 +4,10 @@ import { Schema, model } from "mongoose";
 const TemporaryUserSchema = new Schema({
     email: {
         type: String,
-        // required: true,
-        // lowercase: true,
-        // index: true // For better optimization in searching context
+        required: [true, "Email is required"],
+        lowercase: true,
+        unique: true, // Ensure no two users can register with the same email
+        index: true // For better optimization in searching context
     },
     title: {
         type: String,
@@ -14,9 +15,9 @@ const TemporaryUserSchema = new Schema({
     },
     phoneNumber: {
         type: String,
-        // required: true,
-        // unique: true,
-        // index: true // For better optimization in searching context
+        required: [true, "Phone number is required"],
+        unique: true, // Ensure uniqueness for phone numbers
+        index: true // For better optimization in searching context
     },
     avatar: {
         public_id: {
@@ -58,14 +59,18 @@ const TemporaryUserSchema = new Schema({
         type: Boolean,
         default: false
     },
-}, { timestamps: true })
+}, { timestamps: true });
 
-// To perform encryption
-
+// Pre-save hook for password hashing
 TemporaryUserSchema.pre("save", async function (next) {
-    if (!this.isModified("password")) return next(); // for checking password modification not to change everytime
-    this.password = await hash(this.password, 10)
-    next()
-})
+    if (!this.isModified("password")) return next(); // Check if the password is modified
 
-export const TemporaryUser = model("TemporaryUser", TemporaryUserSchema)
+    try {
+        this.password = await hash(this.password, 10);
+        next();
+    } catch (error) {
+        next(new Error("Error hashing password")); // Handle hashing error
+    }
+});
+
+export const TemporaryUser = model("TemporaryUser", TemporaryUserSchema);
