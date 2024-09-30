@@ -121,7 +121,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "OTP has expired"));
     }
 
-    if (tempUser.otp ===!otp) {
+    if (tempUser.otp !==otp) {
         return next(new ApiError(400, "Invalid OTP"));
     }
 
@@ -467,7 +467,56 @@ const userData= asyncHandler(async(req, res, next)=>{
     return res.status(200).json(
         new ApiResponse(user));
 });
+const updateProfile = asyncHandler(async (req, res, next) => {
+    // Get user data from request body
+    const { name, email, skills, education, contactNumber, resume } = req.body;
 
+    // Find the user by email
+    let user = await User.findOne({ email });
+
+    // If user is not found
+    if (!user) {
+        return next(new ApiError(404, "User not found"));
+    }
+
+    // Update user fields if provided
+    if (name) user.name = name;
+    if (skills) user.skills = skills;
+    if (education) user.education = education;
+    if (contactNumber) user.contactNumber = contactNumber;
+
+    // If resume is provided, handle cloudinary upload and update
+    if (resume) {
+        const file = req.file?.path; // Assuming the resume file is sent via multipart form-data
+        if (file) {
+            const result = await uploadOnCloudinary(file);
+            if (!result) return next(new ApiError(500, "Failed to upload resume"));
+            user.resume = {
+                public_id: result.public_id,
+                url: result.url,
+            };
+        }
+    }
+
+    // Save updated user information
+    await user.save();
+
+    // Return the updated user details
+    return res.status(200).json(
+        new ApiResponse(200, { user }, "Profile updated successfully")
+    );
+});
+const aplicationForm = asyncHandler(async( req, res, next)=>{
+    const {name, email, contactNumber, resume, education, skills}=req.body;
+    let user = await User.findOne({ email });
+    if(!user){
+        return next(new ApiError(404, "User not found"));
+    }
+    if (name) user.name = name;
+    if (skills) user.skills = skills;
+    if (education) user.education = education;
+    if (contactNumber) user.contactNumber = contactNumber;
+})
 
 
 export {
@@ -482,5 +531,6 @@ export {
     skillsMatch,
     // userProfile
     companyAndJob,
-    userData
+    userData,
+    updateProfile
  };

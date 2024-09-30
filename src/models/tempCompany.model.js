@@ -19,6 +19,12 @@ const TemporaryCompanySchema = new Schema({
         type: String,
         required: [true, "Password is required"]
     },
+    roll:{
+        type: String,
+        // required: true,
+        enum: ['company', 'student'],
+        default: 'student'
+    },
     otp: {
         type: String,
         

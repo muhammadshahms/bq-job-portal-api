@@ -15,7 +15,7 @@ const TemporaryUserSchema = new Schema({
     },
     phoneNumber: {
         type: String,
-        required: [true, "Phone number is required"],
+        // required: [true, "Phone number is required"],
         unique: true, // Ensure uniqueness for phone numbers
         index: true // For better optimization in searching context
     },

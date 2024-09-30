@@ -12,6 +12,7 @@ import {
     verifyForgetOTP,
     verifyOTP,
     userData,
+    updateProfile
     // getUserAndCompany
 } from '../controllers/user.controller.js';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
@@ -30,6 +31,7 @@ router.put('/verify-forget', verifyForgetOTP)
 router.put('/update-password', updatePassword)
 router.get('/Jobdata/:skills',skillsMatch)
 router.get('/users',userData)
+router.get('/profile',updateProfile)
 // router.post('/getUserAndComp',userData)
 // router.get('userProfile',userProfile)
 

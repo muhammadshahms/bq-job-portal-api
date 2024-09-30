@@ -25,32 +25,39 @@ const generateAccessAndRefreshTokens = async (userId) => {
 const register = asyncHandler(async (req, res, next) => {
     const { email, companyName, password, confirmPassword } = req.body;
 
-    if (!email || !companyName || !password || !confirmPassword)
+    // Check if all required fields are provided
+    if (!email || !companyName || !password || !confirmPassword) {
         return next(new ApiError(400, "All fields are required"));
-    const companyMail = await Company.findOne({ email:email });
-    if (email == companyMail.email) {
-        return next(new ApiError(400, ` Company already Registed  `));
     }
-    const { isValid, errorMessage } = validatePassword(password);
 
+    // Check if the company already exists in the main Company collection
+    const companyMail = await Company.findOne({ email });
+    if (companyMail) {
+        return next(new ApiError(400, "Company is already registered with this email."));
+    }
+
+    // Validate password
+    const { isValid, errorMessage } = validatePassword(password);
     if (!isValid) {
         return next(new ApiError(400, errorMessage));
     }
 
-    if (password !== confirmPassword)
+    // Check if passwords match
+    if (password !== confirmPassword) {
         return next(new ApiError(400, "Passwords do not match"));
+    }
 
-    const existingTempCompany = await TemporaryCompany.findOne({ email });
-
-    if (existingTempCompany) {
-        if (existingTempCompany.otpExpires < Date.now()) {
-
+    // Check if the company name already exists in the temporary collection
+    const existingCompany = await TemporaryCompany.findOne({ companyName });
+    if (existingCompany) {
+        // If the OTP has expired, regenerate OTP and notify the user
+        if (existingCompany.otpExpires < Date.now()) {
             const otp = generateOTP();
-            const otpExpires = Date.now() + 60 * 1000;
+            const otpExpires = Date.now() + 60 * 1000; // 1-minute OTP expiration
 
-            existingTempCompany.otp = otp;
-            existingTempCompany.otpExpires = otpExpires;
-            await existingTempCompany.save();
+            existingCompany.otp = otp;
+            existingCompany.otpExpires = otpExpires;
+            await existingCompany.save();
 
             await sendOTPEmail(email, otp);
 
@@ -63,57 +70,50 @@ const register = asyncHandler(async (req, res, next) => {
             );
         }
 
+        // If the OTP is still valid, notify the user
         return next(new ApiError(400, "OTP verification pending. Please verify your OTP."));
     }
 
-    
-
+    // Generate a new OTP and create a temporary company
     const otp = generateOTP();
-    const otpExpires = Date.now() + 60 * 1000;
+    const otpExpires = Date.now() + 60 * 1000; // 1-minute OTP expiration
+
+    await TemporaryCompany.create({
+        email,
+        password,
+        otp,
+        otpExpires,
+    });
+
+    await sendOTPEmail(email, otp);
+
     
-    try {
-        const tempCompany = await TemporaryCompany.create({
-            email,
-            password,
-            companyName,
-            otp,
-            otpExpires,
-        });
-    
-        console.log("Temporary Company Created:", tempCompany);  // Add logging here
-    
-        await sendOTPEmail(email, otp);
         return res.status(201).json(
             new ApiResponse(
                 201,
-                "User registered successfully. OTP sent to your email. Please verify it."
+                {},
+                "Company registered successfully. OTP sent to your email. Please verify it."
             )
         );
-    } catch (error) {
-        console.error("Error creating Temporary Company:", error);  // Log errors
-        return next(new ApiError(500, "Failed to create Temporary Company"));
-    }
-    
+   
 });
 
 const verifyOTP = asyncHandler(async (req, res, next) => {
-    const { email, otp } = req.body;
+    const {email ,otp } = req.body;
 
     if (!email || !otp) {
         return next(new ApiError(400, "Email and OTP are required"));
     }
 
-    // Find the temporary company by email
     const tempCompany = await TemporaryCompany.findOne({ email });
 
-    // Check if tempCompany is null
-    if (!tempCompany) {
-        return next(new ApiError(400, "Company not found"));
+    if (!tempCompany ) {
+        return next(new ApiError(404, `Company not found${tempCompany}`));
     }
 
     // Check if OTP matches
-    if (tempCompany.otp !== otp) {
-        return next(new ApiError(400, `Invalid OTP ${tempCompany}`));
+    if (tempCompany.otp != otp) {
+        return next(new ApiError(400, `Invalid OTP${tempCompany.otp}`));
     }
 
     // Check if OTP has expired
@@ -122,23 +122,33 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     }
 
     // Create the company if OTP is valid and not expired
-    const company = await Company.create({
-        email: tempCompany.email,
-        password: tempCompany.password,
-        companyName: tempCompany.companyName,
-        isVerified: true,
-    });
+    let newCompany;
+    try {
+        const company = await Company.create({
+            email: tempCompany.email,
+            password: tempCompany.password,
+            companyName: tempCompany.companyName,
+            isVerified: true,
+        });
 
-    const newCompany = {
-        _id: company._id,
-        email: company.email,
-        companyName: company.companyName,
-        isVerified: company.isVerified,
-    };
+        // Sanitize the created company object for response
+        newCompany = {
+            _id: company._id,
+            email: company.email,
+            companyName: company.companyName,
+            isVerified: company.isVerified,
+        };
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(400).json({ message: "Company name already exists" });
+        }
+        return res.status(500).json({ message: "Internal server error" });
+    }
 
-    // Delete temporary company after successful verification
+    // Delete the temporary company after successful verification
     await TemporaryCompany.deleteOne({ email });
 
+    // Return the newly created company object
     res.status(200).json(new ApiResponse(200, { newCompany }, "Company verified successfully"));
 });
 

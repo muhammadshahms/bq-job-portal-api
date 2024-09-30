@@ -69,7 +69,7 @@ const userSchema = new Schema({
     // },
     education:{
         type: String,
-        required: true,
+        // required: true,
     },
     resume: {
         public_id: {
@@ -85,7 +85,13 @@ const userSchema = new Schema({
         type: String,
         required: [true, "Password is required"]
     },
+    roll: {
+        type: String,
+        enum: ['company', 'student'],
+        default: 'student'
+    },
     otp: {
+        
         type: String,
     },
     otpExpires: {
