@@ -6,7 +6,7 @@ import { errorMiddleware } from "./middlewares/error.middleware.js"
 const app = express();
 app.use(cors(
     {
-        origin: "*",
+        origin: "https://bq-job-portal-api.vercel.app/",
     }
 ));
 
