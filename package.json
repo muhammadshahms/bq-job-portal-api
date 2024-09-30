@@ -1,11 +1,11 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "backend of bano qabio  job portal",
+  "description": "backend of Bano Qabil job portal",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
+    "dev": "nodemon -r dotenv/config src/index.js",
     "start": "node src/index.js",
     "seed": "node seeder.js"
   },
