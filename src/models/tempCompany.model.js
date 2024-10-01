@@ -19,6 +19,18 @@ const TemporaryCompanySchema = new Schema({
         type: String,
         required: [true, "Password is required"]
     },
+    description:{
+        type: String,
+        // required: true,
+    },
+    contactNumber:{
+        type: String,
+        // required: true,
+    },
+    location:{
+        type: String,
+        // required: true,
+    },
     roll:{
         type: String,
         // required: true,

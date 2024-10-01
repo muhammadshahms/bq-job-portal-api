@@ -156,52 +156,39 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
 });
 
 const login = asyncHandler(async (req, res, next) => {
-
     const { email, password } = req.body;
 
-    if (!email || !password)
+    if (!email || !password) {
         return next(new ApiError(400, "All fields are required"));
+    }
 
-    // const user = await User.findOne({ email });
-    // const company = await company.findOne({ email });
+    const user = await User.findOne({ email });
+    const company = await Company.findOne({ email });
 
-    if (!User.email, !Company.email)
+    if (!user && !company) {
         return next(new ApiError(401, "User or Company not found"));
+    }
 
-    if (!user.isVerified,!company.isVerified)
-        return next(new ApiError(401, "User is not verified"));
+    const isPasswordValid = user ? await user.isPasswordCorrect(password) : false;
+    const isCompanyPasswordValid = company ? await company.isPasswordCorrect(password) : false;
 
-    const isPasswordValid = await user.isPasswordCorrect(password);
-    const isCompanyPasswordValid = await company.isPasswordCorrect(password);
-
-    if (!isPasswordValid,isCompanyPasswordValid)
+    if (!isPasswordValid && !isCompanyPasswordValid) {
         return next(new ApiError(401, "Invalid credentials"));
+    }
 
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id,company._id);
-
-    const loggedIn = await User.findById(user._id).select("-password -refreshToken");
-    const companyloggedIn = await company.findById(company._id).select("-password -refreshToken");
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user ? user._id : company._id);
 
     const options = {
         httpOnly: true,
         secure: true
-    }
+    };
 
-    return res
-        .status(200)
+    return res.status(200)
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
-        .json(
-            new ApiResponse(
-                200,
-                {
-                    user: loggedIn,companyloggedIn, accessToken, refreshToken
-                },
-                "User logged In Successfully"
-            )
-        )
+        .json(new ApiResponse(200, { user, company }, "User logged In Successfully"));
+});
 
-})
 
 const resendOTP = asyncHandler(async (req, res, next) => {
     const { email } = req.body;
@@ -286,24 +273,35 @@ const forgetPassword = asyncHandler(async (req, res, next) => {
     const { email } = req.body;
 
     if (!email) {
-        return next(new ApiError(400, "Phone Number required"));
+        return next(new ApiError(400, "Email is required"));
     }
 
     const user = await User.findOne({ email });
+    const company = await Company.findOne({ email });
 
-    if (!user) {
-        return next(new ApiError(401, "User not found"));
+    // Check if neither user nor company exists
+    if (!user && !company) {
+        return next(new ApiError(404, "User or Company not found"));
     }
 
     const otp = generateOTP();
     const otpExpires = Date.now() + 60 * 1000;
 
-    user.otp = otp;
-    user.otpExpires = otpExpires;
+    // Set OTP and expiry for user if exists
+    if (user) {
+        user.otp = otp;
+        user.otpExpires = otpExpires;
+        user.isVerified = false; // Optional: depending on your requirements
+        await user.save();
+    }
 
-    user.isVerified = false;
-
-    await user.save();
+    // Set OTP and expiry for company if exists
+    if (company) {
+        company.otp = otp;
+        company.otpExpires = otpExpires;
+        company.isVerified = false; // Optional: depending on your requirements
+        await company.save();
+    }
 
     await sendOTPEmail(email, otp);
 
@@ -316,85 +314,125 @@ const verifyForgetOTP = asyncHandler(async (req, res, next) => {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-        return next(new ApiError(400, "Phone number and OTP are required"));
+        return next(new ApiError(400, "Email and OTP are required"));
     }
 
     const user = await User.findOne({ email });
+    const company = await Company.findOne({ email });
 
-    if (!user) {
-        return next(new ApiError(400, "User not found"));
+    if (!user && !company) {
+        return next(new ApiError(404, "User or Company not found"));
     }
 
-    if (user.otpExpires < Date.now()) {
-        return next(new ApiError(400, "OTP has expired"));
+    // Check if user exists and verify OTP expiration and validity
+    if (user) {
+        if (user.otpExpires < Date.now()) {
+            return next(new ApiError(400, "OTP has expired for the user"));
+        }
+
+        if (user.otp !== otp) {
+            return next(new ApiError(400, "Invalid OTP for the user"));
+        }
+
+        user.isVerified = true;
+        await user.save();
     }
 
-    if (user.otp !== otp) {
-        return next(new ApiError(400, "Invalid OTP"));
-    }
+    // Check if company exists and verify OTP expiration and validity
+    if (company) {
+        if (company.otpExpires < Date.now()) {
+            return next(new ApiError(400, "OTP has expired for the company"));
+        }
 
-    user.isVerified = true;
-    await user.save();
+        if (company.otp !== otp) {
+            return next(new ApiError(400, "Invalid OTP for the company"));
+        }
+
+        company.isVerified = true;
+        await company.save();
+    }
 
     return res
         .status(200)
-        .json(
-            new ApiResponse(200, {}, "OTP verified successfully, you can now reset your password")
-        );
+        .json(new ApiResponse(200, {}, "OTP verified successfully, you can now reset your password"));
 });
 
-const updatePassword = asyncHandler(async (req, res, next) => {
-    const { newPassword, confirmPassword, email, otp } = req.body;
 
-    if (!newPassword || !confirmPassword || !email || !otp) {
+const updatePassword = asyncHandler(async (req, res, next) => {
+    const { newPassword, confirmPassword, email } = req.body;
+
+    // Check if all required fields are provided
+    if (!newPassword || !confirmPassword || !email ) {
         return next(new ApiError(400, "All fields are required"));
     }
 
+    // Validate the new password
     const { isValid, errorMessage } = validatePassword(newPassword);
-
     if (!isValid) {
         return next(new ApiError(400, errorMessage));
     }
 
+    // Check if passwords match
     if (newPassword !== confirmPassword) {
         return next(new ApiError(400, "Passwords do not match"));
     }
 
-    const user = await User.findOneAndUpdate({ email, otp }, {
-        password: await hash(newPassword, 10),
-        isVerified: true,
-    }, { new: true });
+    // Update password for user
+    const user = await User.findOneAndUpdate(
+        { email},
+        { password: await hash(newPassword, 10), isVerified: true },
+        { new: true }
+    );
 
-     if (!user) {
-        return next(new ApiError(401, "User not found"));
+    // Update password for company
+    const company = await Company.findOne(
+        { email },
+        { password: await hash(newPassword, 10), isVerified: true },
+        { new: true }
+    );
+
+    // Check if neither user nor company was found
+    if (!user && !company) {
+        return next(new ApiError(401, "User or Company not found"));
     }
 
+    // Return success response
     return res
         .status(200)
         .json(new ApiResponse(200, {}, "Password updated successfully"));
-
 });
+
+
 const skillsMatch = asyncHandler(async (req, res, next) => {
     try {
         const { skills } = req.body;
+
         if (!skills) {
             return res.status(400).json({ message: 'Skills query parameter is required' });
         }
 
-        const skillArray = skills.split(',');
-        const matchingUsers = await User.find({
+        // Split the skills into an array and trim whitespace
+        const skillArray = skills.split(',').map(skill => skill.trim());
+
+        // Find jobs that require at least one of the specified skills
+        const matchingJobs = await Job.find({
             skills: { $in: skillArray }
         });
 
-        if (matchingUsers.length === 0) {
-            return res.status(404).json({ message: `No users found with ${skills} skills` });
+        if (matchingJobs.length === 0) {
+            return res.status(404).json({ message: `No jobs found with specified skills: ${skills}` });
         }
 
-        res.status(200).json(matchingUsers);
+        res.status(200).json({
+            message: 'Jobs found',
+            data: matchingJobs
+        });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        next(new ApiError(500, error.message)); // Use your custom error handler
     }
 });
+
+
 // const userProfile = asyncHandler(async (req, res) => {
 //     const id = req.body.id;
 //     if (!id) {

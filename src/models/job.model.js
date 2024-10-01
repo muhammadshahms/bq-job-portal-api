@@ -3,10 +3,11 @@ import { Schema, model, mongoose } from 'mongoose'
 const jobSchema = new mongoose.Schema({
     company: [
         {
-            type: Schema.Types.ObjectId,
+            type: Schema.Types.String,
             ref: "Company"
         }
     ],
+ 
     applicant: [
         {
             type: Schema.Types.ObjectId,
@@ -77,7 +78,7 @@ const jobSchema = new mongoose.Schema({
     skills:
         [
             {
-                type: String,
+                type: Array,
                 // required: true
             }
         ],

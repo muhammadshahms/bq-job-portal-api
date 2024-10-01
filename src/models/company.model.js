@@ -32,6 +32,22 @@ const companySchema = new Schema({
         type: Number,
         default: 0
     },
+    description:{
+        type: String,
+        // required: true,
+    },
+    contactNumber:{
+        type: String,
+        // required: true,
+    },
+    location:{
+        type: String,
+        // required: true,
+    },
+    industry: {
+        type: String,
+        // required: true,
+    },
     otp: {
         type: String,
     },

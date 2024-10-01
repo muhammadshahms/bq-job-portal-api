@@ -1,17 +1,59 @@
 import { Job } from "../models/job.model.js";
+import { Company } from "../models/company.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from "../utils/asyncHandler.js";
 // import { seedJobs } from '../../seeder.js';
 
 const createJob = asyncHandler(async (req, res, next) => {
-    const { company, applicant, positions_available, remaining_positions, last_date, currently_hiring, job_type, job_title, gender_preference, no_of_employees, hiring_manager, documents_required, company_mail, about, education, skills, good_to_have, experience } = req.body;
+    const {  
+        company,
+        applicant,
+        positions_available,
+        remaining_positions,
+        last_date,
+        currently_hiring,
+        job_type,
+        job_title,
+        gender_preference,
+        no_of_employees,
+        hiring_manager,
+        documents_required,
+        company_mail,
+        about,
+        education,
+        skills,
+        good_to_have,
+        experience
+    } = req.body;
 
     console.log(req.company)
 
-    if (!company, !positions_available, !remaining_positions, !last_date, !currently_hiring, !job_type, !job_title, !gender_preference, !no_of_employees, !hiring_manager, !documents_required, !company_mail, !about, !education, !skills, !good_to_have, !experience)
+    if (
+        !company,
+        !positions_available,
+        !remaining_positions, 
+        !last_date, 
+        !currently_hiring, 
+        !job_type,
+        !job_title, 
+        !gender_preference, 
+        !no_of_employees, 
+        !hiring_manager, 
+        !documents_required, 
+        !company_mail, 
+        !about, 
+        !education, 
+        !skills, 
+        !good_to_have, 
+        !experience)
+        
         return next(new ApiError(400, "All fields are required"));
 
+    const companyData = Company.find({company})
+    if(!companyData){
+        return next(new ApiError(404, "Company not found"));
+    }
 
 
     // await job.create({
@@ -40,7 +82,7 @@ const createJob = asyncHandler(async (req, res, next) => {
     );
 });
 const saveDraftJob = asyncHandler(async (req, res, next) => {
-    const { company, applicant, positions_available, remaining_positions, last_date, currently_hiring, job_type, job_title, gender_preference, no_of_employees, hiring_manager, documents_required, company_mail, about, education, skills, good_to_have, experience } = req.body;
+    const { company,  positions_available, remaining_positions, last_date, currently_hiring, job_type, job_title, gender_preference, no_of_employees, hiring_manager, documents_required, company_mail, about, education, skills, good_to_have, experience } = req.body;
 
     // If updating an existing draft, look for its ID
     const { id } = req.params;
@@ -160,7 +202,7 @@ const getJobs = asyncHandler(async (req, res, next) => {
 });
 
 const getJobById = asyncHandler(async (req, res, next) => {
-    const { id } = req.body.id;
+    const { id } = req.body;
     // const dataId = await seedJobs();
 
 
@@ -181,13 +223,13 @@ const getJobById = asyncHandler(async (req, res, next) => {
 });
 
 const getJobByCompany = asyncHandler(async (req, res, next) => {
-    const { companyId } = req.body;
+    const { companyName } = req.body;
 
-    if (!companyId) {
+    if (!companyName) {
         throw new ApiError(400, 'company name is required');
     }
 
-    const jobs = await Job.find({ _id: companyId });
+    const jobs = await Job.find({ companyName });
 
     if (!jobs || jobs.length === 0) {
         throw new ApiError(404, 'No jobs found');

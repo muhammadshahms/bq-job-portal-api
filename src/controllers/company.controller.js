@@ -159,15 +159,15 @@ const login = asyncHandler(async (req, res, next) => {
     if (!email || !password)
         return next(new ApiError(400, "All fields are required"));
 
-    const user = await Company.findOne({ email });
+    const company = await Company.findOne({ email });
 
-    if (!user)
+    if (!company)
         return next(new ApiError(401, "Company not found"));
 
-    if (!user.isVerified)
+    if (!company.isVerified)
         return next(new ApiError(401, "Company is not verified"));
 
-    const isPasswordValid = await user.isPasswordCorrect(password);
+    const isPasswordValid = await company.isPasswordCorrect(password);
 
     if (!isPasswordValid)
         return next(new ApiError(401, "Invalid credentials"));
@@ -259,11 +259,56 @@ const companies = asyncHandler(async (req, res, next) => {
         companyData
     });
 });
-
+const updateProfile = asyncHandler(async (req, res, next) => {
+    const {
+      email,
+      companyName,
+      description,
+      industry,
+      contactNumber,
+      location,
+    } = req.body;
+  
+    // Check if the email is provided in the request
+    if (!email) {
+      return next(new ApiError(400, "Email is required to update the profile"));
+    }
+  
+    // Find the company by email
+    const companyData = await Company.findOne({ email });
+  
+    if (!companyData) {
+      return next(new ApiError(404, "No company found with this email"));
+    }
+  
+    // Update company fields if they are provided in the request body
+    if (companyName) companyData.companyName = companyName;
+    if (description) companyData.description = description;
+    if (industry) companyData.industry = industry;
+    if (contactNumber) companyData.contactNumber = contactNumber;
+    if (location) companyData.location = location;
+  
+    // Add missing fields with default values if they are not present in old records
+    if (!companyData.description) companyData.description = '';  // Set default description
+    if (!companyData.industry) companyData.industry = '';        // Set default industry
+    if (!companyData.contactNumber) companyData.contactNumber = '';  // Set default contact number
+    if (!companyData.location) companyData.location = '';        // Set default location
+  
+    // Save the updated company data
+    await companyData.save();
+  
+    // Return the updated company details in the response
+    return res.status(200).json(
+      new ApiResponse(200, { companyData }, "Profile updated successfully")
+    );
+  });
+  
+  
 export {
     register,
     verifyOTP,
     login,
     resendOTP,
+    updateProfile,
     companies // Corrected export
 };
