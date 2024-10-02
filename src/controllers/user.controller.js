@@ -30,10 +30,22 @@ const generateAccessAndRefreshTokens = async (userId) => {
 }
 
 const registerUser = asyncHandler(async (req, res, next) => {
-    const { email, password, confirmPassword } = req.body;
+    const {banoQabilId ,email, password, confirmPassword, phoneNumber } = req.body;
 
-    if (!email || !password || !confirmPassword)
+    if ( !banoQabilId || !email || !password || !confirmPassword)
         return next(new ApiError(400, "All fields are required"));
+
+    if (phoneNumber === undefined || phoneNumber === null) {
+        return next(new ApiError(400, "Phone number is required and cannot be null"));
+    }
+    const studentId = await User.findOne({banoQabilId})
+    if (studentId){
+        return next(new ApiError(400, "Student Id already exists"));
+    }
+    const user = await User.findOne({email})
+    if (user){
+        return next(new ApiError(400, "Email already exists"));
+    }
 
     const { isValid, errorMessage } = validatePassword(password);
 
@@ -48,7 +60,6 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     if (existingTempUser) {
         if (existingTempUser.otpExpires < Date.now()) {
-
             const otp = generateOTP();
             const otpExpires = Date.now() + 60 * 1000;
 
@@ -88,8 +99,13 @@ const registerUser = asyncHandler(async (req, res, next) => {
     };
 
     await TemporaryUser.create({
+        banoQabilId,
+        email,
+        password: await hash(password, 10),
+        phoneNumber: phoneNumber || null,  // Ensure phoneNumber is either a valid value or explicitly set to null
         email,
         password,
+        phoneNumber: phoneNumber || null,  // Ensure phoneNumber is either a valid value or explicitly set to null
         resume,
         otp,
         otpExpires,
@@ -103,6 +119,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
             "User registered successfully. OTP sent to your email. Please verify it.")
     );
 });
+
 
 const verifyOTP = asyncHandler(async (req, res, next) => {
     const { email, otp } = req.body;
@@ -131,6 +148,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     };
 
     const user = await User.create({
+        banoQabilId: tempUser.banoQabilId,
         email: tempUser.email,
         password: tempUser.password,
         resume,
@@ -141,6 +159,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
 
     const newUser = {
         _id: user._id,
+        banoQabilId: user.banoQabilId,
         email: user.email,
         name: user.name,
         resume: {

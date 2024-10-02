@@ -2,11 +2,17 @@ import { hash } from 'bcrypt';
 import { Schema, model } from "mongoose";
 
 const TemporaryUserSchema = new Schema({
+    banoQabilId:{
+        type: String,
+        // required: true,
+        unique: true,
+        index: true, // For better optimization in searching context
+    },
     email: {
         type: String,
         required: [true, "Email is required"],
         lowercase: true,
-        unique: true, // Ensure no two users can register with the same email
+        unique: false, // Ensure no two users can register with the same email
         index: true // For better optimization in searching context
     },
     title: {
@@ -16,8 +22,8 @@ const TemporaryUserSchema = new Schema({
     phoneNumber: {
         type: String,
         // required: [true, "Phone number is required"],
-        unique: true, // Ensure uniqueness for phone numbers
-        index: true // For better optimization in searching context
+        unique: false, // Ensure uniqueness for phone numbers
+        index: false // For better optimization in searching context
     },
     avatar: {
         public_id: {
@@ -52,7 +58,7 @@ const TemporaryUserSchema = new Schema({
         default: 0
     },
     lastResend: {
-        type: Date,   
+        type: Date,
         default: Date.now
     },
     isVerified: {
@@ -60,6 +66,9 @@ const TemporaryUserSchema = new Schema({
         default: false
     },
 }, { timestamps: true });
+
+// Ensure uniqueness and sparsity for phoneNumber field
+TemporaryUserSchema.index({ phoneNumber: 1 }, { unique: true, sparse: true });
 
 // Pre-save hook for password hashing
 TemporaryUserSchema.pre("save", async function (next) {
