@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
+import { compareSync } from "bcrypt";
 
 
 export const verifyJWT = asyncHandler(async (req, _, next) => {
@@ -39,7 +40,7 @@ export const verifyCompany = asyncHandler(async (req, _, next) => {
 
         const decodeToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-        const company = await User.findById(decodeToken?._id).select("-password -refreshToken");
+        const company = await Company.findById(decodeToken?._id).select("-password -refreshToken");
 
         if (!company) {
             return next(new ApiError(401, "Invalid Access Token"));

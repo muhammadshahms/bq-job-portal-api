@@ -185,20 +185,43 @@ const getDraftJobs = asyncHandler(async (req, res, next) => {
 
 
 const getJobs = asyncHandler(async (req, res, next) => {
-    const jobs = await Job.find();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    // Calculate the number of items to skip
+    const skip = (page - 1) * limit;
+
+    // Fetch company and job data with pagination
+    const jobs = await Job.find().skip(skip).limit(limit);
+
+    // Check if either companys or jobs is not found
+    if ( !jobs.length) {
+        return next(new ApiError(404, `No jobs found`));
+    }
+
+    // Get total counts for companies and jobs
+    const totalJobs = await Job.countDocuments();
+
+    // Calculate total pages
+    const totalJobPages = Math.ceil(totalJobs / limit);
     // const seedData = await seedJobs();
     if (!jobs) {
         return next(new ApiError(404, 'No job found'))
     }
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                jobs,
-                "Jobs fetched successfully"
-            )
-        )
+    
+    return res.status(200).json(
+        new ApiResponse(200,{
+            jobs: jobs,
+            jobPagination: {
+                totalCount: totalJobs,
+                totalPages: totalJobPages,
+                currentPage: page,
+                itemsPerPage: limit,
+            },
+        },
+        `Data fetched successfully`
+    )
+    );
 });
 
 const getJobById = asyncHandler(async (req, res, next) => {

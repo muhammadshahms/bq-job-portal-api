@@ -15,7 +15,7 @@ const router = Router();
 router.post('/create-job', verifyCompany, createJob);
 router.get('/jobs', getJobs);
 router.get('/id', getJobById);
-router.get('/jobs:name', getJobByCompany);
+router.get('/name', getJobByCompany);
 router.post('/delete-job', deleteJob);
 router.get('/drafts', getDraftJobs);
 router.post('/save-draft/:id?', saveDraftJob); // Use the ID param for updating drafts

@@ -197,57 +197,57 @@ const login = asyncHandler(async (req, res, next) => {
 
 });
 
-const resendOTP = asyncHandler(async (req, res, next) => {
-    const { email } = req.body;
+// const resendOTP = asyncHandler(async (req, res, next) => {
+//     const { email } = req.body;
 
-    if (!email) {
-        return next(new ApiError(400, "Emaiil required"));
-    }
+//     if (!email) {
+//         return next(new ApiError(400, "Emaiil required"));
+//     }
 
-    const company = await TemporaryCompany.findOne({ email });
+//     const company = await TemporaryCompany.findOne({ email });
 
-    if (!company) {
-        return next(new ApiError(401, "Company Already Verified"));
-    }
+//     if (!company) {
+//         return next(new ApiError(401, "Company Already Verified"));
+//     }
 
-    if (company.otpExpires > Date.now()) {
-        return next(new ApiError(401, "OTP is still valid. Wait for a minute before resending OTP."));
-    }
+//     if (company.otpExpires > Date.now()) {
+//         return next(new ApiError(401, "OTP is still valid. Wait for a minute before resending OTP."));
+//     }
 
-    const resendAttempts = company.resendAttempts || 0;
-    const currentTime = Date.now();
-    const lastResendTime = new Date(company.lastResend).getTime();
+//     const resendAttempts = company.resendAttempts || 0;
+//     const currentTime = Date.now();
+//     const lastResendTime = new Date(company.lastResend).getTime();
 
-    // Calculate the time difference in minutes
-    const differenceInMinutes = (currentTime - lastResendTime) / (60 * 1000);
+//     // Calculate the time difference in minutes
+//     const differenceInMinutes = (currentTime - lastResendTime) / (60 * 1000);
 
-    const baseWaitTime = 1;
-    const additionalWaitTime = resendAttempts * 5;
-    const requiredWaitTime = (baseWaitTime + additionalWaitTime) - 1;
+//     const baseWaitTime = 1;
+//     const additionalWaitTime = resendAttempts * 5;
+//     const requiredWaitTime = (baseWaitTime + additionalWaitTime) - 1;
 
-    if (differenceInMinutes < requiredWaitTime) {
-        const remainingTime = requiredWaitTime - differenceInMinutes;
-        return next(new ApiError(429, `Please wait ${Math.ceil(remainingTime)} minutes before resending OTP again.`));
-    }
+//     if (differenceInMinutes < requiredWaitTime) {
+//         const remainingTime = requiredWaitTime - differenceInMinutes;
+//         return next(new ApiError(429, `Please wait ${Math.ceil(remainingTime)} minutes before resending OTP again.`));
+//     }
 
-    const otp = generateOTP();
-    const otpExpires = currentTime + 60 * 1000;
+//     const otp = generateOTP();
+//     const otpExpires = currentTime + 60 * 1000;
 
-    company.otp = otp;
-    company.otpExpires = otpExpires;
-    company.lastResend = currentTime;
-    company.resendAttempts += 1;
+//     company.otp = otp;
+//     company.otpExpires = otpExpires;
+//     company.lastResend = currentTime;
+//     company.resendAttempts += 1;
 
-    await company.save();
+//     await company.save();
 
-    await sendOTPEmail(email, otp);
+//     await sendOTPEmail(email, otp);
 
-    return res.status(200).json({
-        message: 'OTP resent successfully',
-        resendAttempts: company.resendAttempts,
-        nextResendIn: `${requiredWaitTime + 5} minutes`
-    });
-});
+//     return res.status(200).json({
+//         message: 'OTP resent successfully',
+//         resendAttempts: company.resendAttempts,
+//         nextResendIn: `${requiredWaitTime + 5} minutes`
+//     });
+// });
 const companies = asyncHandler(async (req, res, next) => {
     const companyData = await Company.find(); // Assuming you are fetching companies from the database
 
@@ -303,12 +303,39 @@ const updateProfile = asyncHandler(async (req, res, next) => {
     );
   });
   
+  const logout = asyncHandler(async (req, res, next) => {
+
+    await Comapny.findByIdAndUpdate(
+        req.company._id,
+        {
+            $unset: {
+                refreshToken: 1 // value to update
+            }
+        },
+        {
+            new: true
+        }
+    )
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(new ApiResponse(200, {}, "Company logged Out"))
+
+})
   
 export {
     register,
     verifyOTP,
     login,
-    resendOTP,
+    // resendOTP,
     updateProfile,
-    companies // Corrected export
+    companies ,
+    logout
 };

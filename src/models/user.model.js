@@ -11,13 +11,19 @@ const userSchema = new Schema({
             type: String,
         }
     },
-    fullName: {
-        type: String,
-    },
     banoQabilId: {
         type: String,
         // required: true,
         // unique: true,
+    },
+    name: {
+         type: String,
+     },
+     education:{
+        type: String,
+    },
+    skills:{
+        type: String,
     },
     email: {
         type: String,

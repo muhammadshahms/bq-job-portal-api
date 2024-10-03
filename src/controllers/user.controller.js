@@ -30,36 +30,57 @@ const generateAccessAndRefreshTokens = async (userId) => {
 }
 
 const registerUser = asyncHandler(async (req, res, next) => {
-    const {banoQabilId ,email, password, confirmPassword, phoneNumber } = req.body;
+    // Extract fields from request body and set default values if not provided
+    const { 
+        name = "",                // Default to empty string if not defined
+        banoQabilId, 
+        email, 
+        password, 
+        confirmPassword, 
+        phoneNumber, 
+        skills = "",              // Default to empty string if not defined
+        education = ""            // Default to empty string if not defined
+    } = req.body;
 
-    if ( !banoQabilId || !email || !password || !confirmPassword)
-        return next(new ApiError(400, "All fields are required"));
+    // Check if mandatory fields are provided
+    if (!banoQabilId || !phoneNumber || !email || !password || !confirmPassword) {
+        return next(new ApiError(400, "All required fields must be provided"));
+    }
 
-    if (phoneNumber === undefined || phoneNumber === null) {
-        return next(new ApiError(400, "Phone number is required and cannot be null"));
+    // Check if BanoQabil ID already exists
+    const studentId = await User.findOne({ banoQabilId });
+    if (studentId) {
+        return next(new ApiError(400, "Student ID already exists"));
     }
-    const studentId = await User.findOne({banoQabilId})
-    if (studentId){
-        return next(new ApiError(400, "Student Id already exists"));
+
+    // Check if Phone Number already exists
+    const studNumber = await User.findOne({ phoneNumber });
+    if (studNumber) {
+        return next(new ApiError(400, "Phone number already exists"));
     }
-    const user = await User.findOne({email})
-    if (user){
+
+    // Check if Email already exists
+    const user = await User.findOne({ email });
+    if (user) {
         return next(new ApiError(400, "Email already exists"));
     }
 
+    // Validate password format
     const { isValid, errorMessage } = validatePassword(password);
-
     if (!isValid) {
         return next(new ApiError(400, errorMessage));
     }
 
-    if (password !== confirmPassword)
+    // Check if passwords match
+    if (password !== confirmPassword) {
         return next(new ApiError(400, "Passwords do not match"));
+    }
 
+    // Check if there's an existing temporary user with the same email
     const existingTempUser = await TemporaryUser.findOne({ email });
-
     if (existingTempUser) {
         if (existingTempUser.otpExpires < Date.now()) {
+            // If OTP expired, generate a new one
             const otp = generateOTP();
             const otpExpires = Date.now() + 60 * 1000;
 
@@ -70,55 +91,58 @@ const registerUser = asyncHandler(async (req, res, next) => {
             await sendOTPEmail(email, otp);
 
             return res.status(200).json(
-                new ApiResponse(
-                    200,
-                    {},
-                    "OTP has expired. A new OTP has been sent. Please verify it."
-                )
+                new ApiResponse(200, {}, "OTP expired. A new OTP has been sent. Please verify it.")
             );
         }
 
         return next(new ApiError(400, "OTP verification pending. Please verify your OTP."));
     }
 
+    // Handle resume file upload if provided
     const file = req?.file?.path;
-    if (!file)
-        return next(new ApiError(400, "Please upload resume"));
+    if (!file) {
+        return next(new ApiError(400, "Please upload your resume"));
+    }
 
     const result = await uploadOnCloudinary(file);
-
-    if (!result)
+    if (!result) {
         return next(new ApiError(500, "Failed to upload resume"));
+    }
 
+    // Generate OTP for verification
     const otp = generateOTP();
     const otpExpires = Date.now() + 60 * 1000;
 
+    // Prepare resume object
     const resume = {
-        public_id: result?.public_id,
-        url: result?.url,
+        public_id: result.public_id,
+        url: result.url,
     };
 
+    // Create a new temporary user
     await TemporaryUser.create({
+        name,
         banoQabilId,
         email,
-        password: await hash(password, 10),
-        phoneNumber: phoneNumber || null,  // Ensure phoneNumber is either a valid value or explicitly set to null
-        email,
-        password,
-        phoneNumber: phoneNumber || null,  // Ensure phoneNumber is either a valid value or explicitly set to null
+        password: await hash(password, 10), // Hash the password
+        phoneNumber,
+        skills,
+        education,
         resume,
         otp,
         otpExpires,
     });
 
+    // Send OTP email
     await sendOTPEmail(email, otp);
 
+    // Respond with success message
     return res.status(201).json(
-        new ApiResponse(
-            201,
-            "User registered successfully. OTP sent to your email. Please verify it.")
+        new ApiResponse(201, {}, "User registered successfully. OTP sent to your email. Please verify it.")
     );
 });
+
+
 
 
 const verifyOTP = asyncHandler(async (req, res, next) => {
@@ -149,8 +173,12 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
 
     const user = await User.create({
         banoQabilId: tempUser.banoQabilId,
+        name: tempUser.name,
         email: tempUser.email,
         password: tempUser.password,
+        phoneNumber: tempUser.phoneNumber,
+        skills: tempUser.skills,
+        education: tempUser.education,
         resume,
         otp: tempUser.otp,
         otpExpires: tempUser.otpExpires,
@@ -160,8 +188,12 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     const newUser = {
         _id: user._id,
         banoQabilId: user.banoQabilId,
-        email: user.email,
         name: user.name,
+        email: user.email,
+        skills: user.skills,
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        education: user.education,
         resume: {
             public_id: user.resume.public_id,
             url: user.resume.url,
@@ -420,10 +452,24 @@ const updatePassword = asyncHandler(async (req, res, next) => {
         .status(200)
         .json(new ApiResponse(200, {}, "Password updated successfully"));
 });
-
+const getCompanyByName = asyncHandler(async (req, res ,next)=>{
+    const { companyName } = req.body;
+    
+    if (!companyName) {
+        return res.status(400).json({ message: 'Company Name is required' });
+    };
+    
+    const company = await Company.findOne({ companyName });
+    
+    if (!company) {
+        return next(new ApiError(404, "Company not found"));
+    };
+    
+    return res.status(200).json(company);
+})
 
 const skillsMatch = asyncHandler(async (req, res, next) => {
-    try {
+  
         const { skills } = req.body;
 
         if (!skills) {
@@ -434,21 +480,32 @@ const skillsMatch = asyncHandler(async (req, res, next) => {
         const skillArray = skills.split(',').map(skill => skill.trim());
 
         // Find jobs that require at least one of the specified skills
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        
+        const skip = (page - 1) * limit;
+
         const matchingJobs = await Job.find({
             skills: { $in: skillArray }
-        });
+        }).skip(skip).limit(limit);
 
-        if (matchingJobs.length === 0) {
-            return res.status(404).json({ message: `No jobs found with specified skills: ${skills}` });
+    
+    
+    
+        if ( !matchingJobs.length) {
+            return next(new ApiError(404, `No Job Match your Skills`));
         }
-
-        res.status(200).json({
-            message: 'Jobs found',
-            data: matchingJobs
-        });
-    } catch (error) {
-        next(new ApiError(500, error.message)); // Use your custom error handler
-    }
+        const totalJobs = await Job.countDocuments();
+        const totalJobsPages = Math.ceil(totalJobs / limit);
+        return res.status(200).json(
+            new ApiResponse(200,{
+                matchingJobs: matchingJobs,
+                userPagination: {
+                    totalCount: totalJobs,
+                    totalPages: totalJobsPages,
+                    currentPage: page,
+                    itemsPerPage: limit,
+                }})); 
 });
 
 
@@ -517,16 +574,33 @@ const companyAndJob = asyncHandler(async (req, res, next) => {
     );
 });
 const userData= asyncHandler(async(req, res, next)=>{
-    const user = await User.find();
-    if(!user){
-        return next(new ApiError(404, "No users found"));
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    const skip = (page - 1) * limit;
+
+
+    const users = await User.find().skip(skip).limit(limit);
+    if ( !users.length) {
+        return next(new ApiError(404, `No User found`));
     }
+    const totalUsers = await User.countDocuments();
+    const totalUsersPages = Math.ceil(totalUsers / limit);
     return res.status(200).json(
-        new ApiResponse(user));
+        new ApiResponse(200,{
+            users: users,
+            userPagination: {
+                totalCount: totalUsers,
+                totalPages: totalUsersPages,
+                currentPage: page,
+                itemsPerPage: limit,
+            }}));
+
+   
 });
 const updateProfile = asyncHandler(async (req, res, next) => {
     // Get user data from request body
-    const { name, email, skills, education, contactNumber, resume } = req.body;
+    const { name, email, skills, education, phoneNumber, resume } = req.body;
 
     // Find the user by email
     let user = await User.findOne({ email });
@@ -536,23 +610,24 @@ const updateProfile = asyncHandler(async (req, res, next) => {
         return next(new ApiError(404, "User not found"));
     }
 
-    // Update user fields if provided
-    if (name) user.name = name;
-    if (skills) user.skills = skills;
-    if (education) user.education = education;
-    if (contactNumber) user.contactNumber = contactNumber;
+    // Update user fields, set to empty string if not provided
+    user.name = name || "";
+    user.skills = skills || "";
+    user.education = education || "";
+    user.phoneNumber = phoneNumber || "";
 
     // If resume is provided, handle cloudinary upload and update
-    if (resume) {
-        const file = req.file?.path; // Assuming the resume file is sent via multipart form-data
-        if (file) {
-            const result = await uploadOnCloudinary(file);
-            if (!result) return next(new ApiError(500, "Failed to upload resume"));
-            user.resume = {
-                public_id: result.public_id,
-                url: result.url,
-            };
-        }
+    if (resume && req.file) {
+        const file = req.file.path; // Assuming the resume file is sent via multipart form-data
+        const result = await uploadOnCloudinary(file);
+        if (!result) return next(new ApiError(500, "Failed to upload resume"));
+        user.resume = {
+            public_id: result.public_id,
+            url: result.url,
+        };
+    } else {
+        // Set resume to an empty object if not provided
+        user.resume = user.resume || { public_id: "", url: "" };
     }
 
     // Save updated user information
@@ -563,6 +638,7 @@ const updateProfile = asyncHandler(async (req, res, next) => {
         new ApiResponse(200, { user }, "Profile updated successfully")
     );
 });
+
 const aplicationForm = asyncHandler(async( req, res, next)=>{
     const {name, email, contactNumber, resume, education, skills}=req.body;
     let user = await User.findOne({ email });
@@ -586,8 +662,10 @@ export {
     verifyForgetOTP,
     updatePassword,
     skillsMatch,
+    getCompanyByName,
     // userProfile
     companyAndJob,
     userData,
+    aplicationForm,
     updateProfile
  };

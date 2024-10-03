@@ -11,7 +11,7 @@ import {
     // userProfile,
     verifyForgetOTP,
     verifyOTP,
-    userData,
+    getCompanyByName,
     updateProfile
     // getUserAndCompany
 } from '../controllers/user.controller.js';
@@ -25,13 +25,13 @@ router.get('/',companyAndJob)
 router.post('/register', singleResume, registerUser)
 router.post('/verify', verifyOTP);
 router.post('/login', login)
-router.put('/resend-otp', resendOTP)
+// router.put('/resend-otp', resendOTP)
 router.put('/forget-password', forgetPassword)
 router.put('/verify-forget', verifyForgetOTP)
 router.put('/update-password', updatePassword)
-router.get('/Jobdata/:skills',skillsMatch)
-router.get('/users',userData)
-router.get('/profile',updateProfile)
+router.get('/jobData/:skills', skillsMatch)
+router.get('/companyName', getCompanyByName)
+router.get('/profile', updateProfile)
 // router.post('/getUserAndComp',userData)
 // router.get('userProfile',userProfile)
 

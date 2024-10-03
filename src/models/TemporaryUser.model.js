@@ -8,12 +8,21 @@ const TemporaryUserSchema = new Schema({
         unique: true,
         index: true, // For better optimization in searching context
     },
+    name:{
+        type: String,
+    },
     email: {
         type: String,
         required: [true, "Email is required"],
         lowercase: true,
         unique: false, // Ensure no two users can register with the same email
         index: true // For better optimization in searching context
+    },
+    education:{
+        type: String,
+    },
+    skills:{
+        type: String,
     },
     title: {
         type: String,
@@ -68,7 +77,7 @@ const TemporaryUserSchema = new Schema({
 }, { timestamps: true });
 
 // Ensure uniqueness and sparsity for phoneNumber field
-TemporaryUserSchema.index({ phoneNumber: 1 }, { unique: true, sparse: true });
+TemporaryUserSchema.index({ phoneNumber: 1 }, { unique: false, sparse: true });
 
 // Pre-save hook for password hashing
 TemporaryUserSchema.pre("save", async function (next) {

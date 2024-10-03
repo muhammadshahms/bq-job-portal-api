@@ -1,6 +1,14 @@
 import { Schema, model, mongoose } from 'mongoose'
 
 const jobSchema = new mongoose.Schema({
+    avatar: {
+        public_id: {
+            type: String,
+        },
+        url: {
+            type: String,
+        }
+    },
     company: [
         {
             type: Schema.Types.String,
