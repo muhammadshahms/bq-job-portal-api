@@ -306,7 +306,7 @@ const updateProfile = asyncHandler(async (req, res, next) => {
   
   const logout = asyncHandler(async (req, res, next) => {
 
-    await Comapny.findByIdAndUpdate(
+    await Company.findByIdAndUpdate(
         req.company._id,
         {
             $unset: {
