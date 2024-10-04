@@ -142,9 +142,6 @@ const registerUser = asyncHandler(async (req, res, next) => {
     );
 });
 
-
-
-
 const verifyOTP = asyncHandler(async (req, res, next) => {
     const { email, otp } = req.body;
 
@@ -508,6 +505,42 @@ const skillsMatch = asyncHandler(async (req, res, next) => {
                 }})); 
 });
 
+const filterData = asyncHandler(async (req, res, next) => {
+    const { job_type, location, last_date } = req.body;
+
+    // Check if none of the filter parameters are provided
+    if (!job_type && !location && !last_date) {
+        return res.status(400).json({ message: 'At least one filter parameter is required' });
+    }
+
+    // Create a query object
+    let query = {};
+
+    // Add filter criteria based on the request body
+    if (job_type) query.job_type = job_type;
+    if (location) query.location = location;
+    if (last_date) query.last_date = last_date;
+
+    // Check if at least one filter has a valid length property
+    if ((job_type && job_type.length === 0) || 
+        (location && location.length === 0) || 
+        (last_date && last_date.length === 0)) {
+        return next(new ApiError(404, 'No Jobs found'));
+    }
+
+    // Fetch jobs based on the query (assuming `Job` is your database model)
+    const jobs = await Job.find(query);
+
+    // Check if no jobs were found
+    if (!jobs || jobs.length === 0) {
+        return next(new ApiError(404, 'No Jobs found'));
+    }
+
+    // Return the filtered jobs
+    res.json(jobs);
+});
+
+
 
 // const userProfile = asyncHandler(async (req, res) => {
 //     const id = req.body.id;
@@ -663,6 +696,7 @@ export {
     updatePassword,
     skillsMatch,
     getCompanyByName,
+    filterData,
     // userProfile
     companyAndJob,
     userData,

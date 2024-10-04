@@ -12,7 +12,7 @@ import { verifyCompany } from '../middlewares/auth.middleware.js';
 
 
 const router = Router();
-router.post('/create-job', verifyCompany, createJob);
+router.post('/create-job', createJob);
 router.get('/jobs', getJobs);
 router.get('/id', getJobById);
 router.get('/name', getJobByCompany);

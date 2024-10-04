@@ -11,6 +11,7 @@ import {
     // userProfile,
     verifyForgetOTP,
     verifyOTP,
+    filterData,
     getCompanyByName,
     updateProfile
     // getUserAndCompany
@@ -30,6 +31,7 @@ router.put('/forget-password', forgetPassword)
 router.put('/verify-forget', verifyForgetOTP)
 router.put('/update-password', updatePassword)
 router.get('/jobData/:skills', skillsMatch)
+router.get('/filter', filterData)
 router.get('/companyName', getCompanyByName)
 router.get('/profile', updateProfile)
 // router.post('/getUserAndComp',userData)

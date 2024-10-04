@@ -7,7 +7,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 const createJob = asyncHandler(async (req, res, next) => {
     const {  
-        company,
+        companyName,
         applicant,
         positions_available,
         remaining_positions,
@@ -27,60 +27,80 @@ const createJob = asyncHandler(async (req, res, next) => {
         experience
     } = req.body;
 
-    console.log(req.company)
+    // Log the request body and check if companyName is provided
+    console.log('Request Body:', req.body);
 
+    // Validate required fields properly
     if (
-        !company,
+        !companyName,
         !positions_available,
-        !remaining_positions, 
-        !last_date, 
-        !currently_hiring, 
+        !remaining_positions,
+        !last_date,
+        !currently_hiring,
         !job_type,
-        !job_title, 
-        !gender_preference, 
-        !no_of_employees, 
-        !hiring_manager, 
-        !documents_required, 
-        !company_mail, 
-        !about, 
-        !education, 
-        !skills, 
-        !good_to_have, 
-        !experience)
-        
+        !job_title,
+        !gender_preference,
+        !no_of_employees,
+        !hiring_manager,
+        !documents_required,
+        !company_mail,
+        !about,
+        !education,
+        !skills,
+        !good_to_have,
+        !experience
+    ) {
         return next(new ApiError(400, "All fields are required"));
+    }
 
-    const companyData = Company.find({company})
-    if(!companyData){
+    // Log the companyName to see if it's being correctly received
+    console.log('Company Name:', companyName);
+
+    // Check if the company exists in the database
+    const companyData = await Job.find({ companyName }).lean(); // Use .lean() to return plain JSON objects
+    console.log('Company Data:', companyData); // Log the company data
+
+    // If company is not found, return a 404 error
+    if (!companyData) {
         return next(new ApiError(404, "Company not found"));
     }
 
+    // Manually set req.company for further use if necessary
+    req.company = companyData;
 
-    // await job.create({
-    //     company : req?.company?._id,
-    //     applicant, 
-    //     positions_available, 
-    //     remaining_positions, 
-    //     last_date, 
-    //     currently_hiring, 
-    //     job_type, job_title, 
-    //     gender_preference, 
-    //     no_of_employees, 
-    //     hiring_manager, 
-    //     documents_required, 
-    //     company_mail, 
-    //     about, education, 
-    //     skills, 
-    //     good_to_have, 
-    //     experience
-    // });
+    // Create a new job entry in the database
+    const newJob = await Job.create({
+        companyName, // Using companyName from request body
+        // applicant, 
+        positions_available, 
+        remaining_positions, 
+        last_date, 
+        currently_hiring, 
+        job_type, 
+        job_title, 
+        gender_preference, 
+        no_of_employees, 
+        hiring_manager, 
+        documents_required, 
+        company_mail, 
+        about, 
+        education, 
+        skills, 
+        good_to_have, 
+        experience
+    });
 
+    // Return a response with the created job
     return res.status(201).json(
         new ApiResponse(
             201,
-            "Job Created Successfully",)
+            { job: newJob }, // Include only the job data, not the entire companyData
+            "Job Created Successfully"
+        )
     );
 });
+
+
 const saveDraftJob = asyncHandler(async (req, res, next) => {
     const { company,  positions_available, remaining_positions, last_date, currently_hiring, job_type, job_title, gender_preference, no_of_employees, hiring_manager, documents_required, company_mail, about, education, skills, good_to_have, experience } = req.body;
 
@@ -185,14 +205,15 @@ const getDraftJobs = asyncHandler(async (req, res, next) => {
 
 
 const getJobs = asyncHandler(async (req, res, next) => {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    // const page = parseInt(req.query.page) || 1;
+    // const limit = parseInt(req.query.limit) || 20;
 
-    // Calculate the number of items to skip
-    const skip = (page - 1) * limit;
+    // // Calculate the number of items to skip
+    // const skip = (page - 1) * limit;
 
     // Fetch company and job data with pagination
-    const jobs = await Job.find().skip(skip).limit(limit);
+    const jobs = await Job.find()
+    // .skip(skip).limit(limit);
 
     // Check if either companys or jobs is not found
     if ( !jobs.length) {
@@ -200,10 +221,10 @@ const getJobs = asyncHandler(async (req, res, next) => {
     }
 
     // Get total counts for companies and jobs
-    const totalJobs = await Job.countDocuments();
+    // const totalJobs = await Job.countDocuments();
 
     // Calculate total pages
-    const totalJobPages = Math.ceil(totalJobs / limit);
+    // const totalJobPages = Math.ceil(totalJobs / limit);
     // const seedData = await seedJobs();
     if (!jobs) {
         return next(new ApiError(404, 'No job found'))
@@ -211,13 +232,13 @@ const getJobs = asyncHandler(async (req, res, next) => {
     
     return res.status(200).json(
         new ApiResponse(200,{
-            jobs: jobs,
-            jobPagination: {
-                totalCount: totalJobs,
-                totalPages: totalJobPages,
-                currentPage: page,
-                itemsPerPage: limit,
-            },
+            jobs: jobs
+            // jobPagination: {
+            //     totalCount: totalJobs,
+            //     totalPages: totalJobPages,
+            //     currentPage: page,
+            //     itemsPerPage: limit,
+            // },
         },
         `Data fetched successfully`
     )
@@ -229,11 +250,32 @@ const getJobById = asyncHandler(async (req, res, next) => {
     // const dataId = await seedJobs();
 
 
+    if (!id) {
+        throw new ApiError(400, 'Job Id is required');
+    }
+
+    const jobs = await Job.findById(id);
+
+   
+    if ( !jobs ||jobs.length === 0) {
+        return (404, 'No jobs found');
+    }
+
+    res.status(200).json({
+        data: jobs,
+        message: 'Jobs found successfully'
+    });
+});
+const getJobByCompany = asyncHandler(async (req, res, next) => {
+    const { companyName } = req.body;
+    // const dataId = await seedJobs();
+
+
     // if (!id) {
     //     throw new ApiError(400, 'Job Id is required');
     // }
 
-    const jobs = await Job.findById(id);
+    const jobs = await Job.find({companyName});
 
     if (!jobs || jobs.length === 0) {
         throw new ApiError(404, 'No jobs found');
@@ -245,24 +287,6 @@ const getJobById = asyncHandler(async (req, res, next) => {
     });
 });
 
-const getJobByCompany = asyncHandler(async (req, res, next) => {
-    const { companyName } = req.body;
-
-    if (!companyName) {
-        throw new ApiError(400, 'company name is required');
-    }
-
-    const jobs = await Job.find({ companyName });
-
-    if (!jobs || jobs.length === 0) {
-        throw new ApiError(404, 'No jobs found');
-    }
-
-    res.status(200).json({
-        data: jobs,
-        message: 'Jobs found successfully'
-    });
-});
 
 const deleteJob = asyncHandler(async (req, res, next) => {
 
