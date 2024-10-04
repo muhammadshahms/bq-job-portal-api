@@ -80,6 +80,7 @@ const register = asyncHandler(async (req, res, next) => {
 
     await TemporaryCompany.create({
         email,
+        companyName,
         password,
         otp,
         otpExpires,
