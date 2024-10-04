@@ -19,7 +19,6 @@ router.post('/verify', verifyOTP);
 // router.post('/resend-otp', resendOTP);
 router.get('/updateProfile',verifyCompany , updateProfile);
 router.get('/', userData)
-// GET all companies
 // router.get('/',verifyCompany , companies);
 router.get('/logout',verifyCompany, logout);
 
