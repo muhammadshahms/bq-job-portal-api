@@ -17,6 +17,7 @@ app.use(cookieParser());
 
 
 import { userRoutes, companyRoutes, jobRoutes } from './routes/index.js'
+import { userRoutes, companyRoutes, jobRoutes } from './routes/index.js'
 
 app.use('/api/v1/user', userRoutes)
 app.use('/api/v1/company', companyRoutes)

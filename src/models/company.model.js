@@ -65,11 +65,11 @@ const companySchema = new Schema({
 
 // To perform encryption
 
-companySchema.pre("save", async function (next) {
-    if (!this.isModified("password")) return next(); // for checking password modification not to change everytime
-    this.password = await hash(this.password, 10)
-    next()
-})
+// companySchema.pre("save", async function (next) {
+//     if (!this.isModified("password")) return next(); // for checking password modification not to change everytime
+//     this.password = await hash(this.password, 10)
+//     next()
+// })
 
 companySchema.methods.isPasswordCorrect = async function (password) {
     return await compare(password, this.password)

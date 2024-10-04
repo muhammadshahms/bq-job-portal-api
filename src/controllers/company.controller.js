@@ -331,6 +331,48 @@ const updateProfile = asyncHandler(async (req, res, next) => {
 
 })
   
+
+    if (company.otpExpires > Date.now()) {
+        return next(new ApiError(401, "OTP is still valid. Wait for a minute before resending OTP."));
+    }
+
+    const resendAttempts = company.resendAttempts || 0;
+    const currentTime = Date.now();
+    const lastResendTime = new Date(company.lastResend).getTime();
+
+    // Calculate the time difference in minutes
+    const differenceInMinutes = (currentTime - lastResendTime) / (60 * 1000);
+
+    const baseWaitTime = 1;
+    const additionalWaitTime = resendAttempts * 5;
+    const requiredWaitTime = (baseWaitTime + additionalWaitTime) - 1;
+
+    if (differenceInMinutes < requiredWaitTime) {
+        const remainingTime = requiredWaitTime - differenceInMinutes;
+        return next(new ApiError(429, `Please wait ${Math.ceil(remainingTime)} minutes before resending OTP again.`));
+    }
+
+    const otp = generateOTP();
+    const otpExpires = currentTime + 60 * 1000;
+
+    company.otp = otp;
+    company.otpExpires = otpExpires;
+    company.lastResend = currentTime;
+    company.resendAttempts += 1;
+
+    await company.save();
+
+    await sendOTPEmail(email, otp);
+
+    return res.status(200).json({
+        message: 'OTP resent successfully',
+        resendAttempts: company.resendAttempts,
+        nextResendIn: `${requiredWaitTime + 5} minutes`
+    });
+});
+
+
+
 export {
     register,
     verifyOTP,
