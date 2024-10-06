@@ -1,26 +1,23 @@
-import { Router } from 'express'
-import {register, 
-        // resendOTP,     
-        verifyOTP, 
-        companies ,
-        updateProfile,
-        logout
-    } from '../controllers/company.controller.js';
-    import { verifyCompany } from '../middlewares/auth.middleware.js';
-
-import {userData,} from "../controllers/user.controller.js";
-
+import { Router } from "express";
+import {
+  register,
+  resendOTP,
+  verifyOTP,
+  companies,
+  updateProfile,
+  logout,
+  login,
+} from "../controllers/company.controller.js";
+import { verifyCompany } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-router.post('/register', register);
-router.post('/verify', verifyOTP);
-// router.post('/login', login);
-// router.post('/resend-otp', resendOTP);
-router.get('/updateProfile',verifyCompany , updateProfile);
-router.get('/', userData)
-// router.get('/',verifyCompany , companies);
-router.get('/logout',verifyCompany, logout);
+router.get("/", verifyCompany, companies);
+router.post("/register", register);
+router.post("/verify", verifyOTP);
+router.post("/login", login);
+router.post("/resend-otp", resendOTP);
+router.patch("/updateProfile", verifyCompany, updateProfile);
+router.get("/logout", verifyCompany, logout);
 
-
-export default router
+export default router;
