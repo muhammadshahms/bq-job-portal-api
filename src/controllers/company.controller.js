@@ -7,21 +7,39 @@ import { Company } from "../models/company.model.js";
 import { User } from "../models/user.model.js";
 import { TemporaryCompany } from "../models/tempCompany.model.js";
 
-const generateAccessAndRefreshTokens = async (userId) => {
+const companyGenerateAccessAndRefreshTokens = async (companyId) => {
     try {
-        const user = await Company.findById(userId);
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
+        console.log("Finding company by ID:", companyId);
+        
+        // Find the company by ID
+        const company = await Company.findById(companyId);
+        
+        if (!company) {
+            console.error("Company not found for ID:", companyId);
+            throw new ApiError(404, "Company not found");
+        }
 
-        user.refreshToken = refreshToken;
-        await user.save({ validBeforeSave: false }) // for preventing to update other fields
+        console.log("Generating access token for company...");
+        const accessToken = company.generateAccessToken(); // Generate access token
+        console.log("Access token generated:", accessToken);
 
-        return { accessToken, refreshToken }
+        console.log("Generating refresh token for company...");
+        const refreshToken = company.generateRefreshToken(); // Generate refresh token
+        console.log("Refresh token generated:", refreshToken);
 
+        // Save the refresh token in the company document
+        company.refreshToken = refreshToken;
+        console.log("Saving refresh token to company document...");
+        await company.save({ validateBeforeSave: false }); // Prevents other fields from being updated
+
+        console.log("Company tokens successfully generated and saved.");
+        return { accessToken, refreshToken };
     } catch (error) {
-        throw new Error(500, "Something went wrong while generating refresh and access token")
+        console.error("Error generating company tokens:", error);
+        throw new ApiError(500, `Something went wrong while generating company tokens: ${error.message}`);
     }
 };
+
 
 const register = asyncHandler(async (req, res, next) => {
     const { email, companyName, password, confirmPassword } = req.body;
@@ -354,6 +372,7 @@ const updateProfile = asyncHandler(async (req, res, next) => {
 })
   
 export {
+    companyGenerateAccessAndRefreshTokens,
     register,
     verifyOTP,
     createProfile,

@@ -8,6 +8,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { generateOTP, validatePassword } from "../utils/helper.js";
 import { sendOTPEmail, sendOTPSMS } from "../utils/features.js"
 import { TemporaryUser } from "../models/TemporaryUser.model.js";
+import { companyGenerateAccessAndRefreshTokens } from "./company.controller.js";
 import { hash } from "bcrypt";
 
 // TODO: Otp send with email and number
@@ -15,31 +16,36 @@ import { hash } from "bcrypt";
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
+        // Find the user by their ID
         const user = await User.findById(userId);
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
+
+        // Generate access and refresh tokens using instance methods
         const accessToken = user.generateAccessToken();
         const refreshToken = user.generateRefreshToken();
 
+        // Save the refresh token in the user document
         user.refreshToken = refreshToken;
-        await user.save({ validBeforeSave: false }) // for preventing to update other fields
+        await user.save({ validateBeforeSave: false }); // Prevents other fields from being updated
 
-        return { accessToken, refreshToken }
-
+        return { accessToken, refreshToken };
     } catch (error) {
-        throw new Error(500, "Something went wrong while generating refresh and access token")
+        console.error("Error generating user tokens:", error);
+        throw new ApiError(500, "Something went wrong while generating user tokens");
     }
-}
+};
+
 
 const registerUser = asyncHandler(async (req, res, next) => {
     // Extract fields from request body and set default values if not provided
     const { 
-        name = "",                // Default to empty string if not defined
-        banoQabilId, 
-        email, 
-        password, 
-        confirmPassword, 
-        phoneNumber, 
-        skills = "",              // Default to empty string if not defined
-        education = ""            // Default to empty string if not defined
+        banoQabilId,
+        phoneNumber,
+        email,
+        password,
+        confirmPassword           // Default to empty string if not defined
     } = req.body;
 
     // Check if mandatory fields are provided
@@ -203,6 +209,8 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     res.status(200).json(new ApiResponse(200, { newUser }, "User verified successfully"));
 });
 
+// Refactored login function
+
 const login = asyncHandler(async (req, res, next) => {
     const { email, password } = req.body;
 
@@ -210,13 +218,22 @@ const login = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "All fields are required"));
     }
 
-    const user = await User.findOne({ email });
-    const company = await Company.findOne({ email });
+    let user, company;
 
-    if (!user && !company) {
-        return next(new ApiError(401, "User or Company not found"));
+    try {
+        // Find the user or company based on the email
+        user = await User.findOne({ email });
+        company = await Company.findOne({ email });
+
+        if (!user && !company) {
+            return next(new ApiError(401, "User or Company not found"));
+        }
+    } catch (error) {
+        console.error("Error finding user or company:", error);
+        return next(new ApiError(500, "Internal Server Error while searching for user or company"));
     }
 
+    // Validate password for user or company
     const isPasswordValid = user ? await user.isPasswordCorrect(password) : false;
     const isCompanyPasswordValid = company ? await company.isPasswordCorrect(password) : false;
 
@@ -224,18 +241,35 @@ const login = asyncHandler(async (req, res, next) => {
         return next(new ApiError(401, "Invalid credentials"));
     }
 
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user ? user._id : company._id);
+    try {
+        // Generate access and refresh tokens based on the entity type
+        let accessToken, refreshToken;
+        if (user) {
+            ({ accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id));
+        } else if (company) {
+            ({ accessToken, refreshToken } = await companyGenerateAccessAndRefreshTokens(company._id));
+        }
 
-    const options = {
-        httpOnly: true,
-        secure: true
-    };
+        // Set secure cookies for access and refresh tokens
+        const cookieOptions = {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'Strict'
+        };
 
-    return res.status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
-        .json(new ApiResponse(200, { user, company }, "User logged In Successfully"));
+        return res
+            .status(200)
+            .cookie("accessToken", accessToken, cookieOptions)
+            .cookie("refreshToken", refreshToken, cookieOptions)
+            .json(new ApiResponse(200, { user, company }, "User logged in successfully"));
+
+    } catch (error) {
+        console.error("Error generating tokens:", error);
+        return next(new ApiError(500, "Internal Server Error while generating tokens"));
+    }
 });
+
+
 
 
 const resendOTP = asyncHandler(async (req, res, next) => {

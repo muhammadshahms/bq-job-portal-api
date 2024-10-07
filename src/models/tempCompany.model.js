@@ -2,7 +2,6 @@ import { hash } from 'bcrypt';
 import { Schema, model , mongoose } from "mongoose";
 
 const TemporaryCompanySchema = new Schema({
-    _id: mongoose.Schema.Types.ObjectId,
     email: {
         type: String,
         required: true,

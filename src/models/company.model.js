@@ -3,9 +3,7 @@ import jwt from "jsonwebtoken";
 import { hash, compare } from 'bcrypt';
 
 const companySchema = new Schema({
-   _id: {
-    type: mongoose.Schema.Types.ObjectId
-},
+
     email: {
         type: String,
         required: true,
@@ -74,11 +72,11 @@ const companySchema = new Schema({
 
 // To perform encryption
 
-// companySchema.pre("save", async function (next) {
-//     if (!this.isModified("password")) return next(); // for checking password modification not to change everytime
-//     this.password = await hash(this.password, 10)
-//     next()
-// })
+companySchema.pre("save", async function (next) {
+    if (!this.isModified("password")) return next(); // for checking password modification not to change everytime
+    this.password = await hash(this.password, 10)
+    next()
+})
 
 companySchema.methods.isPasswordCorrect = async function (password) {
     return await compare(password, this.password)
@@ -86,6 +84,7 @@ companySchema.methods.isPasswordCorrect = async function (password) {
 
 // Access Token
 companySchema.methods.generateAccessToken = function () {
+    console.log("Generating access token for company with ID:", this._id); // Add log
     return jwt.sign({
         _id: this._id,
         email: this.email,
@@ -95,10 +94,11 @@ companySchema.methods.generateAccessToken = function () {
         {
             expiresIn: process.env.ACCESS_TOKEN_EXPIRY
         }
-    )
+    );
 }
 
 companySchema.methods.generateRefreshToken = function () {
+    console.log("Generating refresh token for company with ID:", this._id); // Add log
     return jwt.sign({
         _id: this._id
     },
@@ -106,7 +106,7 @@ companySchema.methods.generateRefreshToken = function () {
         {
             expiresIn: process.env.REFRESH_TOKEN_EXPIRY
         }
-    )
+    );
 }
 
 export const Company = model("Company", companySchema)
