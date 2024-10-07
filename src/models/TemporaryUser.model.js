@@ -51,6 +51,12 @@ const TemporaryUserSchema = new Schema({
             type: String,
             required: true,
         },
+        roll:{
+            type: String,
+            // required: true,
+            enum: ['company', 'student'],
+            default: 'student'
+        },
     },
     password: {
         type: String,

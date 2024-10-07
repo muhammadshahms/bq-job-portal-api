@@ -19,8 +19,9 @@ router.post('/verify', verifyOTP);
 // router.post('/resend-otp', resendOTP);
 router.get('/updateProfile',verifyCompany , updateProfile);
 router.get('/', userData)
-// router.get('/',verifyCompany , companies);
-router.get('/logout',verifyCompany, logout);
+router.get('/companiesData', companies);
+router.get('/logout', logout);
+
 
 
 export default router

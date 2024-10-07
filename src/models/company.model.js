@@ -1,8 +1,11 @@
-import { Schema, model } from "mongoose";
+import { Schema, model , mongoose } from "mongoose";
 import jwt from "jsonwebtoken";
 import { hash, compare } from 'bcrypt';
 
 const companySchema = new Schema({
+   _id: {
+    type: mongoose.Schema.Types.ObjectId
+},
     email: {
         type: String,
         required: true,
@@ -47,6 +50,12 @@ const companySchema = new Schema({
     industry: {
         type: String,
         // required: true,
+    },
+    roll:{
+        type: String,
+        // required: true,
+        enum: ['company', 'student'],
+        default: 'company'
     },
     otp: {
         type: String,

@@ -4,6 +4,7 @@ import { ApiResponse } from '../utils/ApiResponse.js'
 import { generateOTP, validatePassword } from "../utils/helper.js";
 import { sendOTPEmail, sendOTPSMS } from "../utils/features.js"
 import { Company } from "../models/company.model.js";
+import { User } from "../models/user.model.js";
 import { TemporaryCompany } from "../models/tempCompany.model.js";
 
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -24,16 +25,19 @@ const generateAccessAndRefreshTokens = async (userId) => {
 
 const register = asyncHandler(async (req, res, next) => {
     const { email, companyName, password, confirmPassword } = req.body;
-
+const a ={ email, companyName, password, confirmPassword};
     // Check if all required fields are provided
+    console.log(a);
     if (!email || !companyName || !password || !confirmPassword) {
         return next(new ApiError(400, "All fields are required"));
     }
 
+
     // Check if the company already exists in the main Company collection
-    const companyMail = await Company.findOne({ email });
-    if (companyMail) {
-        return next(new ApiError(400, "Company is already registered with this email."));
+    const companyMail = await Company.findOne({ email });    
+    const userMail = await User.findOne({ email });    
+    if (companyMail || userMail) {
+        return next(new ApiError(400, "Company Or User  is already registered with this email."));
     }
 
     // Validate password
@@ -151,6 +155,20 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
 
     // Return the newly created company object
     res.status(200).json(new ApiResponse(200, { newCompany }, "Company verified successfully"));
+});
+const createProfile = asyncHandler(async(req, res, next) => {
+    const {avatar, companyName, email, contactNumber, location} = res.body;
+    if(!avatar || !email || !companyName || !contactNumber || !location){
+        return next(new ApiError(400, "All fields are required"));
+    }
+    const company = await Company.findOneAndUpdate({ email }, {avatar, companyName, email, contactNumber, location}, {new: true, upsert: true});
+    if(!company){
+        return next(new ApiError(500, "Failed to create company profile"));
+    }
+    res.status(200).json(
+        new ApiResponse(200, 
+            {company}, 
+            "Company profile created successfully"));
 });
 
 const login = asyncHandler(async (req, res, next) => {
@@ -334,6 +352,7 @@ const updateProfile = asyncHandler(async (req, res, next) => {
 export {
     register,
     verifyOTP,
+    createProfile,
     login,
     // resendOTP,
     updateProfile,

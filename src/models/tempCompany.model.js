@@ -1,7 +1,8 @@
 import { hash } from 'bcrypt';
-import { Schema, model } from "mongoose";
+import { Schema, model , mongoose } from "mongoose";
 
 const TemporaryCompanySchema = new Schema({
+    _id: mongoose.Schema.Types.ObjectId,
     email: {
         type: String,
         required: true,
@@ -35,7 +36,7 @@ const TemporaryCompanySchema = new Schema({
         type: String,
         // required: true,
         enum: ['company', 'student'],
-        default: 'student'
+        default: 'company'
     },
     otp: {
         type: String,
