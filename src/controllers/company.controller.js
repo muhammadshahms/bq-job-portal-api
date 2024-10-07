@@ -191,9 +191,9 @@ const login = asyncHandler(async (req, res, next) => {
     if (!isPasswordValid)
         return next(new ApiError(401, "Invalid credentials"));
 
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(company?._id);
 
-    const loggedIn = await Company.findById(user._id).select("-password -refreshToken");
+    const loggedIn = await Company.findById(company?._id).select("-password -refreshToken");
 
     const options = {
         httpOnly: true,
@@ -208,7 +208,7 @@ const login = asyncHandler(async (req, res, next) => {
             new ApiResponse(
                 200,
                 {
-                    user: loggedIn, accessToken, refreshToken
+                    company: loggedIn, accessToken, refreshToken
                 },
                 "Company logged In Successfully"
             )
@@ -216,57 +216,58 @@ const login = asyncHandler(async (req, res, next) => {
 
 });
 
-// const resendOTP = asyncHandler(async (req, res, next) => {
-//     const { email } = req.body;
+const resendOTP = asyncHandler(async (req, res, next) => {
+    const { email } = req.body;
 
-//     if (!email) {
-//         return next(new ApiError(400, "Emaiil required"));
-//     }
+    if (!email) {
+        return next(new ApiError(400, "Emaiil required"));
+    }
 
-//     const company = await TemporaryCompany.findOne({ email });
+    const company = await TemporaryCompany.findOne({ email });
 
-//     if (!company) {
-//         return next(new ApiError(401, "Company Already Verified"));
-//     }
+    if (!company) {
+        return next(new ApiError(401, "Company Already Verified"));
+    }
 
-//     if (company.otpExpires > Date.now()) {
-//         return next(new ApiError(401, "OTP is still valid. Wait for a minute before resending OTP."));
-//     }
+    if (company.otpExpires > Date.now()) {
+        return next(new ApiError(401, "OTP is still valid. Wait for a minute before resending OTP."));
+    }
 
-//     const resendAttempts = company.resendAttempts || 0;
-//     const currentTime = Date.now();
-//     const lastResendTime = new Date(company.lastResend).getTime();
+    const resendAttempts = company.resendAttempts || 0;
+    const currentTime = Date.now();
+    const lastResendTime = new Date(company.lastResend).getTime();
 
-//     // Calculate the time difference in minutes
-//     const differenceInMinutes = (currentTime - lastResendTime) / (60 * 1000);
+    // Calculate the time difference in minutes
+    const differenceInMinutes = (currentTime - lastResendTime) / (60 * 1000);
 
-//     const baseWaitTime = 1;
-//     const additionalWaitTime = resendAttempts * 5;
-//     const requiredWaitTime = (baseWaitTime + additionalWaitTime) - 1;
+    const baseWaitTime = 1;
+    const additionalWaitTime = resendAttempts * 5;
+    const requiredWaitTime = (baseWaitTime + additionalWaitTime) - 1;
 
-//     if (differenceInMinutes < requiredWaitTime) {
-//         const remainingTime = requiredWaitTime - differenceInMinutes;
-//         return next(new ApiError(429, `Please wait ${Math.ceil(remainingTime)} minutes before resending OTP again.`));
-//     }
+    if (differenceInMinutes < requiredWaitTime) {
+        const remainingTime = requiredWaitTime - differenceInMinutes;
+        return next(new ApiError(429, `Please wait ${Math.ceil(remainingTime)} minutes before resending OTP again.`));
+    }
 
-//     const otp = generateOTP();
-//     const otpExpires = currentTime + 60 * 1000;
+    const otp = generateOTP();
+    const otpExpires = currentTime + 60 * 1000;
 
-//     company.otp = otp;
-//     company.otpExpires = otpExpires;
-//     company.lastResend = currentTime;
-//     company.resendAttempts += 1;
+    company.otp = otp;
+    company.otpExpires = otpExpires;
+    company.lastResend = currentTime;
+    company.resendAttempts += 1;
 
-//     await company.save();
+    await company.save();
 
-//     await sendOTPEmail(email, otp);
+    await sendOTPEmail(email, otp);
 
-//     return res.status(200).json({
-//         message: 'OTP resent successfully',
-//         resendAttempts: company.resendAttempts,
-//         nextResendIn: `${requiredWaitTime + 5} minutes`
-//     });
-// });
+    return res.status(200).json({
+        message: 'OTP resent successfully',
+        resendAttempts: company.resendAttempts,
+        nextResendIn: `${requiredWaitTime + 5} minutes`
+    });
+});
+
 const companies = asyncHandler(async (req, res, next) => {
     const companyData = await Company.find(); // Assuming you are fetching companies from the database
 
@@ -278,48 +279,51 @@ const companies = asyncHandler(async (req, res, next) => {
         companyData
     });
 });
+
 const updateProfile = asyncHandler(async (req, res, next) => {
+
     const {
       email,
       companyName,
       description,
+      noOfEmployees,
       industry,
       contactNumber,
-      location,
+      location,     
     } = req.body;
   
-    // Check if the email is provided in the request
-    if (!email) {
-      return next(new ApiError(400, "Email is required to update the profile"));
+    if (!email || !companyName || !description || !noOfEmployees || !industry || !contactNumber || !location) {
+      return next(new ApiError(400, "All fields are required"));
     }
-  
-    // Find the company by email
-    const companyData = await Company.findOne({ email });
-  
-    if (!companyData) {
-      return next(new ApiError(404, "No company found with this email"));
+
+    const company = await Company.findByIdAndUpdate(
+        req?.company?._id,
+       {
+        $set: {
+            email,
+            companyName,
+            description,
+            noOfEmployees,
+            industry,
+            contactNumber,
+            location,
+        }
+       },
+         {
+             new: true
+         }
+    ).select("-password -refreshToken");
+
+    if (!company) {
+        return next(new ApiError(404, "Company not found"));
     }
-  
-    // Update company fields if they are provided in the request body
-    if (companyName) companyData.companyName = companyName;
-    if (description) companyData.description = description;
-    if (industry) companyData.industry = industry;
-    if (contactNumber) companyData.contactNumber = contactNumber;
-    if (location) companyData.location = location;
-  
-    // Add missing fields with default values if they are not present in old records
-    if (!companyData.description) companyData.description = '';  // Set default description
-    if (!companyData.industry) companyData.industry = '';        // Set default industry
-    if (!companyData.contactNumber) companyData.contactNumber = '';  // Set default contact number
-    if (!companyData.location) companyData.location = '';        // Set default location
-  
-    // Save the updated company data
-    await companyData.save();
-  
-    // Return the updated company details in the response
-    return res.status(200).json(
-      new ApiResponse(200, { companyData }, "Profile updated successfully")
-    );
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, company, "Account details updated successfully")
+        );
+    
   });
   
   const logout = asyncHandler(async (req, res, next) => {
@@ -354,7 +358,7 @@ export {
     verifyOTP,
     createProfile,
     login,
-    // resendOTP,
+    resendOTP,
     updateProfile,
     companies ,
     logout

@@ -1,15 +1,14 @@
-import { Router } from 'express'
-import {register, 
-        // resendOTP,     
-        verifyOTP, 
-        companies ,
-        updateProfile,
-        logout
-    } from '../controllers/company.controller.js';
-    import { verifyCompany } from '../middlewares/auth.middleware.js';
-
-import {userData,} from "../controllers/user.controller.js";
-
+import { Router } from "express";
+import {
+  register,
+  resendOTP,
+  verifyOTP,
+  companies,
+  updateProfile,
+  logout,
+  login,
+} from "../controllers/company.controller.js";
+import { verifyCompany } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
@@ -23,5 +22,4 @@ router.get('/companiesData', companies);
 router.get('/logout', logout);
 
 
-
-export default router
+export default router;
