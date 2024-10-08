@@ -39,11 +39,11 @@ const companyGenerateAccessAndRefreshTokens = async (companyId) => {
         throw new ApiError(500, `Something went wrong while generating company tokens: ${error.message}`);
     }
 };
-
-
 const register = asyncHandler(async (req, res, next) => {
     const { email, companyName, password, confirmPassword } = req.body;
-const a ={ email, companyName, password, confirmPassword};
+   
+   
+    const a ={ email, companyName, password, confirmPassword};
     // Check if all required fields are provided
     console.log(a);
     if (!email || !companyName || !password || !confirmPassword) {
@@ -120,7 +120,6 @@ const a ={ email, companyName, password, confirmPassword};
         );
    
 });
-
 const verifyOTP = asyncHandler(async (req, res, next) => {
     const {email ,otp } = req.body;
 
@@ -174,21 +173,35 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     // Return the newly created company object
     res.status(200).json(new ApiResponse(200, { newCompany }, "Company verified successfully"));
 });
-const createProfile = asyncHandler(async(req, res, next) => {
-    const {avatar, companyName, email, contactNumber, location} = res.body;
-    if(!avatar || !email || !companyName || !contactNumber || !location){
+const createProfile = asyncHandler(async (req, res, next) => {
+    // Destructure properties from `req.body`, not `res.body`
+    const {avatar ,companyName ,email ,contactNumber ,location} = req.body;
+    
+    // Validate that all required fields are present
+    if (avatar || !email || !companyName || !contactNumber ) {
         return next(new ApiError(400, "All fields are required"));
     }
-    const company = await Company.findOneAndUpdate({ email }, {avatar, companyName, email, contactNumber, location}, {new: true, upsert: true});
-    if(!company){
+    
+    // Find and update the company profile based on the email, or create a new one if it doesn't exist
+    const company = await Company.findOneAndUpdate(
+        { email },
+        { avatar ,companyName, email, contactNumber, location }
+        // { new: true, upsert: true }
+    );
+    
+    // Check if the company profile was successfully created or updated
+    if (!company) {
         return next(new ApiError(500, "Failed to create company profile"));
     }
+    
+    // Send a success response with the company profile
     res.status(200).json(
         new ApiResponse(200, 
-            {company}, 
-            "Company profile created successfully"));
+            { company }, 
+            "Company profile created successfully"
+        )
+    );
 });
-
 const login = asyncHandler(async (req, res, next) => {
 
     const { email, password } = req.body;
@@ -233,7 +246,6 @@ const login = asyncHandler(async (req, res, next) => {
         )
 
 });
-
 const resendOTP = asyncHandler(async (req, res, next) => {
     const { email } = req.body;
 
@@ -285,7 +297,6 @@ const resendOTP = asyncHandler(async (req, res, next) => {
         nextResendIn: `${requiredWaitTime + 5} minutes`
     });
 });
-
 const companies = asyncHandler(async (req, res, next) => {
     const companyData = await Company.find(); // Assuming you are fetching companies from the database
 
@@ -297,7 +308,6 @@ const companies = asyncHandler(async (req, res, next) => {
         companyData
     });
 });
-
 const updateProfile = asyncHandler(async (req, res, next) => {
 
     const {
@@ -342,8 +352,22 @@ const updateProfile = asyncHandler(async (req, res, next) => {
             new ApiResponse(200, company, "Account details updated successfully")
         );
     
-  });
-  
+});
+  const getCompanyByName = asyncHandler(async (req, res ,next)=>{
+    const { companyName } = req.body;
+    
+    if (!companyName) {
+        return res.status(400).json({ message: 'Company Name is required' });
+    };
+    
+    const company = await Company.findOne({ companyName });
+    
+    if (!company) {
+        return next(new ApiError(404, "Company not found"));
+    };
+    
+    return res.status(200).json(company);
+});
   const logout = asyncHandler(async (req, res, next) => {
 
     await Company.findByIdAndUpdate(
@@ -369,7 +393,7 @@ const updateProfile = asyncHandler(async (req, res, next) => {
         .clearCookie("refreshToken", options)
         .json(new ApiResponse(200, {}, "Company logged Out"))
 
-})
+});
   
 export {
     companyGenerateAccessAndRefreshTokens,
@@ -377,6 +401,7 @@ export {
     verifyOTP,
     createProfile,
     login,
+    getCompanyByName,
     resendOTP,
     updateProfile,
     companies ,

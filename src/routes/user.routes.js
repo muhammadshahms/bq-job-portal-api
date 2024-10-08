@@ -12,12 +12,12 @@ import {
     verifyForgetOTP,
     verifyOTP,
     filterData,
-    getCompanyByName,
+    createUserProfile,
     updateProfile
     // getUserAndCompany
 } from '../controllers/user.controller.js';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
-import { singleResume } from '../middlewares/multer.middleware.js';
+import { singleAvatar, singleResume } from '../middlewares/multer.middleware.js';
 
 const router = Router();
 
@@ -25,14 +25,14 @@ const router = Router();
 router.get('/',companyAndJob)
 router.post('/register', singleResume, registerUser)
 router.post('/verify', verifyOTP);
+router.post('/createProfile',singleAvatar ,createUserProfile);
 router.post('/login', login)
-// router.put('/resend-otp', resendOTP)
+router.put('/resend-otp', resendOTP)
 router.put('/forget-password', forgetPassword)
 router.put('/verify-forget', verifyForgetOTP)
 router.put('/update-password', updatePassword)
 router.get('/jobData/:skills', skillsMatch)
 router.get('/filter', filterData)
-router.get('/companyName', getCompanyByName)
 router.get('/profile', updateProfile)
 // router.post('/getUserAndComp',userData)
 // router.get('userProfile',userProfile)

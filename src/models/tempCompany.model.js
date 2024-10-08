@@ -31,6 +31,14 @@ const TemporaryCompanySchema = new Schema({
         type: String,
         // required: true,
     },
+    avatar:{
+        public_id: {
+            type: String,
+        },
+        url: {
+            type: String,
+        }
+    },
     roll:{
         type: String,
         // required: true,
