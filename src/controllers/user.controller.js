@@ -35,13 +35,12 @@ const generateAccessAndRefreshTokens = async (userId) => {
 const registerUser = asyncHandler(async (req, res, next) => {
     const {
         banoQabilId,
-        phoneNumber,
         email,
         password,
         confirmPassword
     } = req.body;
 
-    if (!banoQabilId || !phoneNumber || !email || !password || !confirmPassword) {
+    if (!banoQabilId || !email || !password || !confirmPassword) {
         return next(new ApiError(400, "All required fields must be provided"));
     }
 
@@ -50,10 +49,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "Student ID already exists"));
     }
 
-    const studNumber = await User.findOne({ phoneNumber });
-    if (studNumber) {
-        return next(new ApiError(400, "Phone number already exists"));
-    }
+    
 
     const user = await User.findOne({ email });
     if (user) {
@@ -108,13 +104,11 @@ const registerUser = asyncHandler(async (req, res, next) => {
     };
 
     await TemporaryUser.create({
-        name,
         banoQabilId,
         email,
         password: await hash(password, 10),
-        phoneNumber,
-        skills,
-        education,
+        // skills,
+        // education,
         resume,
         otp,
         otpExpires,
@@ -187,8 +181,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     res.status(200).json(new ApiResponse(200, { newUser }, "User verified successfully"));
 });
 const createUserProfile = asyncHandler(async (req, res, next) => {
-    console.log("Request Body:", req.body);
-    console.log("Uploaded File:", req.file);
+
 
     const { name, email, phoneNumber, skills, gender } = req.body;
 
@@ -467,46 +460,7 @@ const updatePassword = asyncHandler(async (req, res, next) => {
         .status(200)
         .json(new ApiResponse(200, {}, "Password updated successfully"));
 });
-const skillsMatch = asyncHandler(async (req, res, next) => {
-    const{user}= User.findOne(id);
-    
 
-    const { skills } = req.body;
-
-    if (!skills) {
-        return res.status(400).json({ message: 'Skills query parameter is required' });
-    }
-
-    const skillArray = skills.split(',').map(skill => skill.trim());
-
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-
-    const skip = (page - 1) * limit;
-
-    const matchingJobs = await Job.find({
-        skills: { $in: skillArray }
-    }).skip(skip).limit(limit);
-
-
-
-
-    if (!matchingJobs.length) {
-        return next(new ApiError(404, `No Job Match your Skills`));
-    }
-    const totalJobs = await Job.countDocuments();
-    const totalJobsPages = Math.ceil(totalJobs / limit);
-    return res.status(200).json(
-        new ApiResponse(200, {
-            matchingJobs: matchingJobs,
-            userPagination: {
-                totalCount: totalJobs,
-                totalPages: totalJobsPages,
-                currentPage: page,
-                itemsPerPage: limit,
-            }
-        }));
-});
 const filterData = asyncHandler(async (req, res, next) => {
     const { job_type, location, last_date } = req.body;
 
@@ -655,7 +609,6 @@ export {
     forgetPassword,
     verifyForgetOTP,
     updatePassword,
-    skillsMatch,
     filterData,
     companyAndJob,
     userData,

@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from '../utils/ApiResponse.js'
 import { generateOTP, validatePassword } from "../utils/helper.js";
 import { sendOTPEmail, sendOTPSMS } from "../utils/features.js"
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Company } from "../models/company.model.js";
 import { User } from "../models/user.model.js";
 import { TemporaryCompany } from "../models/tempCompany.model.js";
@@ -11,7 +12,6 @@ const companyGenerateAccessAndRefreshTokens = async (companyId) => {
     try {
         console.log("Finding company by ID:", companyId);
         
-        // Find the company by ID
         const company = await Company.findById(companyId);
         
         if (!company) {
@@ -20,17 +20,16 @@ const companyGenerateAccessAndRefreshTokens = async (companyId) => {
         }
 
         console.log("Generating access token for company...");
-        const accessToken = company.generateAccessToken(); // Generate access token
+        const accessToken = company.generateAccessToken(); 
         console.log("Access token generated:", accessToken);
 
         console.log("Generating refresh token for company...");
-        const refreshToken = company.generateRefreshToken(); // Generate refresh token
+        const refreshToken = company.generateRefreshToken(); 
         console.log("Refresh token generated:", refreshToken);
 
-        // Save the refresh token in the company document
         company.refreshToken = refreshToken;
         console.log("Saving refresh token to company document...");
-        await company.save({ validateBeforeSave: false }); // Prevents other fields from being updated
+        await company.save({ validateBeforeSave: false }); 
 
         console.log("Company tokens successfully generated and saved.");
         return { accessToken, refreshToken };
@@ -44,32 +43,28 @@ const register = asyncHandler(async (req, res, next) => {
    
    
     const a ={ email, companyName, password, confirmPassword};
-    // Check if all required fields are provided
     console.log(a);
     if (!email || !companyName || !password || !confirmPassword) {
         return next(new ApiError(400, "All fields are required"));
     }
 
 
-    // Check if the company already exists in the main Company collection
     const companyMail = await Company.findOne({ email });    
     const userMail = await User.findOne({ email });    
     if (companyMail || userMail) {
         return next(new ApiError(400, "Company Or User  is already registered with this email."));
     }
 
-    // Validate password
+    
     const { isValid, errorMessage } = validatePassword(password);
     if (!isValid) {
         return next(new ApiError(400, errorMessage));
     }
 
-    // Check if passwords match
     if (password !== confirmPassword) {
         return next(new ApiError(400, "Passwords do not match"));
     }
 
-    // Check if the company name already exists in the temporary collection
     const existingCompany = await TemporaryCompany.findOne({ companyName });
     if (existingCompany) {
         // If the OTP has expired, regenerate OTP and notify the user
@@ -92,13 +87,11 @@ const register = asyncHandler(async (req, res, next) => {
             );
         }
 
-        // If the OTP is still valid, notify the user
         return next(new ApiError(400, "OTP verification pending. Please verify your OTP."));
     }
 
-    // Generate a new OTP and create a temporary company
     const otp = generateOTP();
-    const otpExpires = Date.now() + 60 * 1000; // 1-minute OTP expiration
+    const otpExpires = Date.now() + 60 * 1000; 
 
     await TemporaryCompany.create({
         email,
@@ -174,27 +167,31 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     res.status(200).json(new ApiResponse(200, { newCompany }, "Company verified successfully"));
 });
 const createProfile = asyncHandler(async (req, res, next) => {
-    // Destructure properties from `req.body`, not `res.body`
     const {avatar ,companyName ,email ,contactNumber ,location} = req.body;
     
-    // Validate that all required fields are present
+    let avatarUrl = null;
+    if (req.file) {
+        const result = await uploadOnCloudinary(req.file.path); // Assuming uploadOnCloudinary returns an object with a URL
+        if (!result) {
+            return next(new ApiError(500, "Failed to upload avatar"));
+        }
+        avatarUrl = result.url;
+    }
     if (avatar || !email || !companyName || !contactNumber ) {
         return next(new ApiError(400, "All fields are required"));
-    }
+    };
     
-    // Find and update the company profile based on the email, or create a new one if it doesn't exist
     const company = await Company.findOneAndUpdate(
         { email },
-        { avatar ,companyName, email, contactNumber, location }
-        // { new: true, upsert: true }
+        { avatar: avatarUrl,companyName, email, contactNumber, location },
+        { new: true, upsert: true }
+
     );
     
-    // Check if the company profile was successfully created or updated
     if (!company) {
         return next(new ApiError(500, "Failed to create company profile"));
     }
     
-    // Send a success response with the company profile
     res.status(200).json(
         new ApiResponse(200, 
             { company }, 
@@ -353,7 +350,7 @@ const updateProfile = asyncHandler(async (req, res, next) => {
         );
     
 });
-  const getCompanyByName = asyncHandler(async (req, res ,next)=>{
+const getCompanyByName = asyncHandler(async (req, res ,next)=>{
     const { companyName } = req.body;
     
     if (!companyName) {

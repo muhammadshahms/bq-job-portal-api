@@ -15,11 +15,11 @@ import { verifyCompany } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-router.post('/register', register);
+router.post('/register',singleAvatar, register);
 router.post('/verify', verifyOTP);
 router.post('/createProfile',singleAvatar, createProfile);
-// router.post('/login', login);
-// router.post('/resend-otp', resendOTP);
+router.post('/login', login);
+router.post('/resend-otp', resendOTP);
 router.get('/updateProfile',verifyCompany , updateProfile);
 router.get('/companyName', getCompanyByName)
 

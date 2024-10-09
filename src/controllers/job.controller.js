@@ -199,17 +199,19 @@ const getJobById = asyncHandler(async (req, res, next) => {
     });
 });
 const getJobByCompany = asyncHandler(async (req, res, next) => {
-    const { companyName } = req.body;
+    const { companyName , skills } = req.body;
    
 
+    const skillData = await Job.find({skills});
     const jobs = await Job.find({companyName});
 
-    if (!jobs || jobs.length === 0) {
+    if (!jobs || jobs.length === 0 ||!skillData || skillData.length === 0) {
         throw new ApiError(404, 'No jobs found');
     }
 
     res.status(200).json({
         data: jobs,
+        skills: skillData,
         message: 'Jobs found successfully'
     });
 });
@@ -226,6 +228,46 @@ const deleteJob = asyncHandler(async (req, res, next) => {
         data: jobToDelete
     });
 });
+const skillsMatch = asyncHandler(async (req, res, next) => {
+    const{user}= User.findOne(id);
+
+
+    const { skills } = req.body;
+
+    if (!skills) {
+        return res.status(400).json({ message: 'Skills query parameter is required' });
+    }
+
+    const skillArray = skills.split(',').map(skill => skill.trim());
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    const skip = (page - 1) * limit;
+
+    const matchingJobs = await Job.find({
+        skills: { $in: skillArray }
+    }).skip(skip).limit(limit);
+
+
+
+
+    if (!matchingJobs.length) {
+        return next(new ApiError(404, `No Job Match your Skills`));
+    }
+    const totalJobs = await Job.countDocuments();
+    const totalJobsPages = Math.ceil(totalJobs / limit);
+    return res.status(200).json(
+        new ApiResponse(200, {
+            matchingJobs: matchingJobs,
+            userPagination: {
+                totalCount: totalJobs,
+                totalPages: totalJobsPages,
+                currentPage: page,
+                itemsPerPage: limit,
+            }
+        }));
+});
 
 
 export {
@@ -233,6 +275,7 @@ export {
     deleteJob, 
     getJobByCompany, 
     getJobById, 
+    skillsMatch, 
     getJobs,
     saveDraftJob,
     getDraftJobs,
