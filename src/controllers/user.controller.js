@@ -36,12 +36,13 @@ const registerUser = asyncHandler(async (req, res, next) => {
     const {
         banoQabilId,
         email,
+        phoneNumber,
         password,
         confirmPassword
     } = req.body;
 
-    if (!banoQabilId || !email || !password || !confirmPassword) {
-        return next(new ApiError(400, "All required fields must be provided"));
+    if (!banoQabilId || (!email && !phoneNumber) || !password || !confirmPassword) {
+        return next(new ApiError(400, "Bano Qabil ID, password, and either email or phone number must be provided"));
     }
 
     const studentId = await User.findOne({ banoQabilId });
@@ -49,11 +50,18 @@ const registerUser = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "Student ID already exists"));
     }
 
-    
+    if (email) {
+        const existingUserByEmail = await User.findOne({ email });
+        if (existingUserByEmail) {
+            return next(new ApiError(400, "Email already exists"));
+        }
+    }
 
-    const user = await User.findOne({ email });
-    if (user) {
-        return next(new ApiError(400, "Email already exists"));
+    if (phoneNumber) {
+        const existingUserByPhone = await User.findOne({ phoneNumber });
+        if (existingUserByPhone) {
+            return next(new ApiError(400, "Phone number already exists"));
+        }
     }
 
     const { isValid, errorMessage } = validatePassword(password);
@@ -65,24 +73,26 @@ const registerUser = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "Passwords do not match"));
     }
 
-    const existingTempUser = await TemporaryUser.findOne({ email });
-    if (existingTempUser) {
-        if (existingTempUser.otpExpires < Date.now()) {
-            const otp = generateOTP();
-            const otpExpires = Date.now() + 60 * 1000;
+    if (email) {
+        const existingTempUser = await TemporaryUser.findOne({ email });
+        if (existingTempUser) {
+            if (existingTempUser.otpExpires < Date.now()) {
+                const otp = generateOTP();
+                const otpExpires = Date.now() + 60 * 1000; // OTP expiry set to 1 minute
 
-            existingTempUser.otp = otp;
-            existingTempUser.otpExpires = otpExpires;
-            await existingTempUser.save();
+                existingTempUser.otp = otp;
+                existingTempUser.otpExpires = otpExpires;
+                await existingTempUser.save();
 
-            await sendOTPEmail(email, otp);
+                await sendOTPEmail(email, otp);
 
-            return res.status(200).json(
-                new ApiResponse(200, {}, "OTP expired. A new OTP has been sent. Please verify it.")
-            );
+                return res.status(200).json(
+                    new ApiResponse(200, {}, "OTP expired. A new OTP has been sent. Please verify it.")
+                );
+            }
+
+            return next(new ApiError(400, "OTP verification pending. Please verify your OTP."));
         }
-
-        return next(new ApiError(400, "OTP verification pending. Please verify your OTP."));
     }
 
     const file = req?.file?.path;
@@ -106,10 +116,9 @@ const registerUser = asyncHandler(async (req, res, next) => {
     await TemporaryUser.create({
         banoQabilId,
         email,
-        password: await hash(password, 10),
-        // skills,
-        // education,
+        phoneNumber,
         resume,
+        password: await hash(password, 10), 
         otp,
         otpExpires,
     });
@@ -120,6 +129,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
         new ApiResponse(201, {}, "User registered successfully. OTP sent to your email. Please verify it.")
     );
 });
+
 const verifyOTP = asyncHandler(async (req, res, next) => {
     const { email, otp } = req.body;
 

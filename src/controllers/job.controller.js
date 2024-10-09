@@ -61,6 +61,7 @@ const createJob = asyncHandler(async (req, res, next) => {
     req.company = companyData;
 
     const newJob = await Job.create({
+        companyName,
         positions_available, 
         remaining_positions, 
         last_date, 
@@ -229,8 +230,6 @@ const deleteJob = asyncHandler(async (req, res, next) => {
     });
 });
 const skillsMatch = asyncHandler(async (req, res, next) => {
-    const{user}= User.findOne(id);
-
 
     const { skills } = req.body;
 

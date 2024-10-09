@@ -9,9 +9,9 @@ const jobSchema = new mongoose.Schema({
             type: String,
         }
     },
-    company: [
+    companyName: [
         {
-            type: Schema.Types.String,
+            type: String,
             ref: "Company"
         }
     ],
