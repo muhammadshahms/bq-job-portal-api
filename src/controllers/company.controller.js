@@ -152,18 +152,18 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     // Return the newly created company object
     res.status(200).json(new ApiResponse(200, { newCompany }, "Company verified successfully"));
 });
-const createProfile = asyncHandler(async(req, res, next) => {
-    const {avatar, companyName, email, contactNumber, location} = res.body;
-    if(!avatar || !email || !companyName || !contactNumber || !location){
+const createProfile = asyncHandler(async (req, res, next) => {
+    const { avatar, companyName, email, contactNumber, location } = res.body;
+    if (!avatar || !email || !companyName || !contactNumber || !location) {
         return next(new ApiError(400, "All fields are required"));
     }
-    const company = await Company.findOneAndUpdate({ email }, {avatar, companyName, email, contactNumber, location}, {new: true, upsert: true});
-    if(!company){
+    const company = await Company.findOneAndUpdate({ email }, { avatar, companyName, email, contactNumber, location }, { new: true, upsert: true });
+    if (!company) {
         return next(new ApiError(500, "Failed to create company profile"));
     }
     res.status(200).json(
-        new ApiResponse(200, 
-            {company}, 
+        new ApiResponse(200,
+            { company },
             "Company profile created successfully"));
 });
 
@@ -290,7 +290,7 @@ const updateProfile = asyncHandler(async (req, res, next) => {
 
 
     const company = await Company.findById(req.company._id);
-  
+
     if (!company) {
         return next(new ApiError(404, "Company not found"));
     }
