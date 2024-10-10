@@ -1,5 +1,5 @@
 import { hash } from 'bcrypt';
-import { Schema, model , mongoose } from "mongoose";
+import { Schema, model } from "mongoose";
 
 const TemporaryCompanySchema = new Schema({
     email: {
@@ -31,19 +31,11 @@ const TemporaryCompanySchema = new Schema({
         type: String,
         // required: true,
     },
-    avatar:{
-        public_id: {
-            type: String,
-        },
-        url: {
-            type: String,
-        }
-    },
     roll:{
         type: String,
         // required: true,
         enum: ['company', 'student'],
-        default: 'company'
+        default: 'student'
     },
     otp: {
         type: String,

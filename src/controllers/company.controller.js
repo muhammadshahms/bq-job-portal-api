@@ -3,68 +3,51 @@ import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from '../utils/ApiResponse.js'
 import { generateOTP, validatePassword } from "../utils/helper.js";
 import { sendOTPEmail, sendOTPSMS } from "../utils/features.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Company } from "../models/company.model.js";
-import { User } from "../models/user.model.js";
 import { TemporaryCompany } from "../models/tempCompany.model.js";
 
-const companyGenerateAccessAndRefreshTokens = async (companyId) => {
+const generateAccessAndRefreshTokens = async (userId) => {
     try {
-        console.log("Finding company by ID:", companyId);
-        
-        const company = await Company.findById(companyId);
-        
-        if (!company) {
-            console.error("Company not found for ID:", companyId);
-            throw new ApiError(404, "Company not found");
-        }
+        const user = await Company.findById(userId);
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
 
-        console.log("Generating access token for company...");
-        const accessToken = company.generateAccessToken(); 
-        console.log("Access token generated:", accessToken);
+        user.refreshToken = refreshToken;
+        await user.save({ validBeforeSave: false }) // for preventing to update other fields
 
-        console.log("Generating refresh token for company...");
-        const refreshToken = company.generateRefreshToken(); 
-        console.log("Refresh token generated:", refreshToken);
+        return { accessToken, refreshToken }
 
-        company.refreshToken = refreshToken;
-        console.log("Saving refresh token to company document...");
-        await company.save({ validateBeforeSave: false }); 
-
-        console.log("Company tokens successfully generated and saved.");
-        return { accessToken, refreshToken };
     } catch (error) {
-        console.error("Error generating company tokens:", error);
-        throw new ApiError(500, `Something went wrong while generating company tokens: ${error.message}`);
+        throw new Error(500, "Something went wrong while generating refresh and access token")
     }
 };
+
 const register = asyncHandler(async (req, res, next) => {
     const { email, companyName, password, confirmPassword } = req.body;
-   
-   
-    const a ={ email, companyName, password, confirmPassword};
-    console.log(a);
+
+    // Check if all required fields are provided
     if (!email || !companyName || !password || !confirmPassword) {
         return next(new ApiError(400, "All fields are required"));
     }
 
-
-    const companyMail = await Company.findOne({ email });    
-    const userMail = await User.findOne({ email });    
-    if (companyMail || userMail) {
-        return next(new ApiError(400, "Company Or User  is already registered with this email."));
+    // Check if the company already exists in the main Company collection
+    const companyMail = await Company.findOne({ email });
+    if (companyMail) {
+        return next(new ApiError(400, "Company is already registered with this email."));
     }
 
-    
+    // Validate password
     const { isValid, errorMessage } = validatePassword(password);
     if (!isValid) {
         return next(new ApiError(400, errorMessage));
     }
 
+    // Check if passwords match
     if (password !== confirmPassword) {
         return next(new ApiError(400, "Passwords do not match"));
     }
 
+    // Check if the company name already exists in the temporary collection
     const existingCompany = await TemporaryCompany.findOne({ companyName });
     if (existingCompany) {
         // If the OTP has expired, regenerate OTP and notify the user
@@ -87,11 +70,13 @@ const register = asyncHandler(async (req, res, next) => {
             );
         }
 
+        // If the OTP is still valid, notify the user
         return next(new ApiError(400, "OTP verification pending. Please verify your OTP."));
     }
 
+    // Generate a new OTP and create a temporary company
     const otp = generateOTP();
-    const otpExpires = Date.now() + 60 * 1000; 
+    const otpExpires = Date.now() + 60 * 1000; // 1-minute OTP expiration
 
     await TemporaryCompany.create({
         email,
@@ -113,6 +98,7 @@ const register = asyncHandler(async (req, res, next) => {
         );
    
 });
+
 const verifyOTP = asyncHandler(async (req, res, next) => {
     const {email ,otp } = req.body;
 
@@ -166,39 +152,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     // Return the newly created company object
     res.status(200).json(new ApiResponse(200, { newCompany }, "Company verified successfully"));
 });
-const createProfile = asyncHandler(async (req, res, next) => {
-    const {avatar ,companyName ,email ,contactNumber ,location} = req.body;
-    
-    let avatarUrl = null;
-    if (req.file) {
-        const result = await uploadOnCloudinary(req.file.path); // Assuming uploadOnCloudinary returns an object with a URL
-        if (!result) {
-            return next(new ApiError(500, "Failed to upload avatar"));
-        }
-        avatarUrl = result.url;
-    }
-    if (avatar || !email || !companyName || !contactNumber ) {
-        return next(new ApiError(400, "All fields are required"));
-    };
-    
-    const company = await Company.findOneAndUpdate(
-        { email },
-        { avatar: avatarUrl,companyName, email, contactNumber, location },
-        { new: true, upsert: true }
 
-    );
-    
-    if (!company) {
-        return next(new ApiError(500, "Failed to create company profile"));
-    }
-    
-    res.status(200).json(
-        new ApiResponse(200, 
-            { company }, 
-            "Company profile created successfully"
-        )
-    );
-});
 const login = asyncHandler(async (req, res, next) => {
 
     const { email, password } = req.body;
@@ -243,6 +197,7 @@ const login = asyncHandler(async (req, res, next) => {
         )
 
 });
+
 const resendOTP = asyncHandler(async (req, res, next) => {
     const { email } = req.body;
 
@@ -294,6 +249,7 @@ const resendOTP = asyncHandler(async (req, res, next) => {
         nextResendIn: `${requiredWaitTime + 5} minutes`
     });
 });
+
 const companies = asyncHandler(async (req, res, next) => {
     const companyData = await Company.find(); // Assuming you are fetching companies from the database
 
@@ -305,6 +261,7 @@ const companies = asyncHandler(async (req, res, next) => {
         companyData
     });
 });
+
 const updateProfile = asyncHandler(async (req, res, next) => {
 
     const {
@@ -321,23 +278,9 @@ const updateProfile = asyncHandler(async (req, res, next) => {
       return next(new ApiError(400, "All fields are required"));
     }
 
-    const company = await Company.findByIdAndUpdate(
-        req?.company?._id,
-       {
-        $set: {
-            email,
-            companyName,
-            description,
-            noOfEmployees,
-            industry,
-            contactNumber,
-            location,
-        }
-       },
-         {
-             new: true
-         }
-    ).select("-password -refreshToken");
+    const company = await Company.findById(req?.company?._id);
+
+    
 
     if (!company) {
         return next(new ApiError(404, "Company not found"));
@@ -349,22 +292,8 @@ const updateProfile = asyncHandler(async (req, res, next) => {
             new ApiResponse(200, company, "Account details updated successfully")
         );
     
-});
-const getCompanyByName = asyncHandler(async (req, res ,next)=>{
-    const { companyName } = req.body;
-    
-    if (!companyName) {
-        return res.status(400).json({ message: 'Company Name is required' });
-    };
-    
-    const company = await Company.findOne({ companyName });
-    
-    if (!company) {
-        return next(new ApiError(404, "Company not found"));
-    };
-    
-    return res.status(200).json(company);
-});
+  });
+  
   const logout = asyncHandler(async (req, res, next) => {
 
     await Company.findByIdAndUpdate(
@@ -390,15 +319,12 @@ const getCompanyByName = asyncHandler(async (req, res ,next)=>{
         .clearCookie("refreshToken", options)
         .json(new ApiResponse(200, {}, "Company logged Out"))
 
-});
+})
   
 export {
-    companyGenerateAccessAndRefreshTokens,
     register,
     verifyOTP,
-    createProfile,
     login,
-    getCompanyByName,
     resendOTP,
     updateProfile,
     companies ,

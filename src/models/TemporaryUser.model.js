@@ -31,8 +31,8 @@ const TemporaryUserSchema = new Schema({
     phoneNumber: {
         type: String,
         // required: [true, "Phone number is required"],
-        unique: false, // Ensure uniqueness for phone numbers
-        index: false // For better optimization in searching context
+        // unique: false, // Ensure uniqueness for phone numbers
+        // index: false // For better optimization in searching context
     },
     avatar: {
         public_id: {
@@ -50,12 +50,6 @@ const TemporaryUserSchema = new Schema({
         url: {
             type: String,
             required: true,
-        },
-        roll:{
-            type: String,
-            // required: true,
-            enum: ['company', 'student'],
-            default: 'student'
         },
     },
     password: {
@@ -81,9 +75,6 @@ const TemporaryUserSchema = new Schema({
         default: false
     },
 }, { timestamps: true });
-
-// Ensure uniqueness and sparsity for phoneNumber field
-TemporaryUserSchema.index({ phoneNumber: 1 }, { unique: false, sparse: true });
 
 // Pre-save hook for password hashing
 TemporaryUserSchema.pre("save", async function (next) {

@@ -7,25 +7,18 @@ import {
   updateProfile,
   logout,
   login,
-  createProfile,
-  getCompanyByName,
 } from "../controllers/company.controller.js";
-import { singleAvatar } from "../middlewares/multer.middleware.js";
 import { verifyCompany } from "../middlewares/auth.middleware.js";
+import { singleAvatar } from "../middlewares/multer.middleware.js";
 
 const router = Router();
 
-router.post('/register',singleAvatar, register);
-router.post('/verify', verifyOTP);
-router.post('/createProfile',singleAvatar, createProfile);
-router.post('/login', login);
-router.post('/resend-otp', resendOTP);
-router.get('/updateProfile',verifyCompany , updateProfile);
-router.get('/companyName', getCompanyByName)
-
-// router.get('/', userData)
-router.get('/companiesData', companies);
-router.get('/logout', logout);
-
+router.get("/", verifyCompany, companies);
+router.post("/register", register);
+router.post("/verify", verifyOTP);
+router.post("/login", login);
+router.post("/resend-otp", resendOTP);
+router.patch("/updateProfile", verifyCompany, singleAvatar, updateProfile);
+router.get("/logout", verifyCompany, logout);
 
 export default router;

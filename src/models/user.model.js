@@ -13,8 +13,8 @@ const userSchema = new Schema({
     },
     banoQabilId: {
         type: String,
-        // required: true,
-        // unique: true,
+        unique: true,
+        required: true
     },
     name: {
          type: String,
@@ -22,15 +22,18 @@ const userSchema = new Schema({
      education:{
         type: String,
     },
-    skills:{
-        type: String,
-    },
+    skills:[
+        {
+            type: String,
+            // required: true,
+        }
+    ],
     email: {
         type: String,
-        // required: true,
-        // unique: false,
-        // lowercase: true,
-        // index: true // For better optimization in searching context
+        required: true,
+        unique: false,
+        lowercase: true,
+        // index: true
     },
     
     // title: {
@@ -44,9 +47,6 @@ const userSchema = new Schema({
         // index: true // For better optimization in searching context
     },
     gender: {
-        type: String,
-    },
-    nationality: {
         type: String,
     },
     address: {
@@ -93,7 +93,6 @@ const userSchema = new Schema({
     },
     roll: {
         type: String,
-        enum: ['company', 'student'],
         default: 'student'
     },
     otp: {
@@ -122,11 +121,11 @@ const userSchema = new Schema({
 
 // To perform encryption
 
-userSchema.pre("save", async function (next) {
-    if (!this.isModified("password")) return next();
-    this.password = await hash(this.password, 10)
-    next()
-})
+// userSchema.pre("save", async function (next) {
+//     if (!this.isModified("password")) return next(); // for checking password modification not to change everytime
+//     this.password = await hash(this.password, 10)
+//     next()
+// })
 
 userSchema.methods.isPasswordCorrect = async function (password) {
     return await compare(password, this.password)
