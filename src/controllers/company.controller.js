@@ -88,19 +88,19 @@ const register = asyncHandler(async (req, res, next) => {
 
     await sendOTPEmail(email, otp);
 
-    
-        return res.status(201).json(
-            new ApiResponse(
-                201,
-                {},
-                "Company registered successfully. OTP sent to your email. Please verify it."
-            )
-        );
-   
+
+    return res.status(201).json(
+        new ApiResponse(
+            201,
+            {},
+            "Company registered successfully. OTP sent to your email. Please verify it."
+        )
+    );
+
 });
 
 const verifyOTP = asyncHandler(async (req, res, next) => {
-    const {email ,otp } = req.body;
+    const { email, otp } = req.body;
 
     if (!email || !otp) {
         return next(new ApiError(400, "Email and OTP are required"));
@@ -108,7 +108,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
 
     const tempCompany = await TemporaryCompany.findOne({ email });
 
-    if (!tempCompany ) {
+    if (!tempCompany) {
         return next(new ApiError(404, `Company not found${tempCompany}`));
     }
 
@@ -151,6 +151,20 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
 
     // Return the newly created company object
     res.status(200).json(new ApiResponse(200, { newCompany }, "Company verified successfully"));
+});
+const createProfile = asyncHandler(async(req, res, next) => {
+    const {avatar, companyName, email, contactNumber, location} = res.body;
+    if(!avatar || !email || !companyName || !contactNumber || !location){
+        return next(new ApiError(400, "All fields are required"));
+    }
+    const company = await Company.findOneAndUpdate({ email }, {avatar, companyName, email, contactNumber, location}, {new: true, upsert: true});
+    if(!company){
+        return next(new ApiError(500, "Failed to create company profile"));
+    }
+    res.status(200).json(
+        new ApiResponse(200, 
+            {company}, 
+            "Company profile created successfully"));
 });
 
 const login = asyncHandler(async (req, res, next) => {
@@ -256,7 +270,7 @@ const companies = asyncHandler(async (req, res, next) => {
     if (!companyData) {
         return next(new ApiError(404, "No companies found"));
     }
-    
+
     res.status(200).json({
         companyData
     });
@@ -265,36 +279,44 @@ const companies = asyncHandler(async (req, res, next) => {
 const updateProfile = asyncHandler(async (req, res, next) => {
 
     const {
-      email,
-      companyName,
-      description,
-      noOfEmployees,
-      industry,
-      contactNumber,
-      location,     
+        email,
+        companyName,
+        description,
+        noOfEmployees,
+        industry,
+        contactNumber,
+        location,
     } = req.body;
+
+
+    const company = await Company.findById(req.company._id);
   
-    if (!email || !companyName || !description || !noOfEmployees || !industry || !contactNumber || !location) {
-      return next(new ApiError(400, "All fields are required"));
-    }
-
-    const company = await Company.findById(req?.company?._id);
-
-    
-
     if (!company) {
         return next(new ApiError(404, "Company not found"));
     }
 
+    const companyData = await Company.findOneAndUpdate(
+        { _id: req.company._id },
+        {
+            email,
+            companyName,
+            description,
+            noOfEmployees,
+            industry,
+            contactNumber,
+            location
+        },
+        { new: true }
+    );
     return res
         .status(200)
         .json(
-            new ApiResponse(200, company, "Account details updated successfully")
+            new ApiResponse(200, companyData, "Account details updated successfully")
         );
-    
-  });
-  
-  const logout = asyncHandler(async (req, res, next) => {
+
+});
+
+const logout = asyncHandler(async (req, res, next) => {
 
     await Company.findByIdAndUpdate(
         req.company._id,
@@ -320,13 +342,14 @@ const updateProfile = asyncHandler(async (req, res, next) => {
         .json(new ApiResponse(200, {}, "Company logged Out"))
 
 })
-  
+
 export {
     register,
     verifyOTP,
+    createProfile,
     login,
     resendOTP,
     updateProfile,
-    companies ,
+    companies,
     logout
 };
