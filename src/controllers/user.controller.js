@@ -39,10 +39,10 @@ const registerUser = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "All required fields must be provided"));
     }
 
-    const isBanoQabilStudent = await User.findOne({ banoQabilId });
-    if (isBanoQabilStudent) {
-        return next(new ApiError(400, "You are not a BanoQabil student"));
-    }
+    // const isBanoQabilStudent = await User.findOne({ banoQabilId });
+    // if (isBanoQabilStudent) {
+    //     return next(new ApiError(400, "You are not a BanoQabil student"));
+    // }
 
     const isUserExists = await User.findOne({email});
 
@@ -187,7 +187,7 @@ const login = asyncHandler(async (req, res, next) => {
 
     const user = await User.findOne({ 
         $or: [{banoQabilId: email}, {email}, {phoneNumber: email}]
-     });
+     }).select("-password -refreshToken -otp -otpExpires");
 
     if (!user) {
         return next(new ApiError(401, "User not found"));
@@ -233,7 +233,6 @@ const resendOTP = asyncHandler(async (req, res, next) => {
     const currentTime = Date.now();
     const lastResendTime = new Date(user.lastResend).getTime();
 
-    // Calculate the time difference in minutes
     const differenceInMinutes = (currentTime - lastResendTime) / (60 * 1000);
 
     const baseWaitTime = 1;
@@ -329,10 +328,9 @@ const verifyForgetOTP = asyncHandler(async (req, res, next) => {
     }
 
     const user = await User.findOne({ email });
-    const company = await Company.findOne({ email });
 
-    if (!user && !company) {
-        return next(new ApiError(404, "User or Company not found"));
+    if (!user) {
+        return next(new ApiError(404, "User not found"));
     }
 
     if (user) {
@@ -346,20 +344,6 @@ const verifyForgetOTP = asyncHandler(async (req, res, next) => {
 
         user.isVerified = true;
         await user.save();
-    }
-
-    // Check if company exists and verify OTP expiration and validity
-    if (company) {
-        if (company.otpExpires < Date.now()) {
-            return next(new ApiError(400, "OTP has expired for the company"));
-        }
-
-        if (company.otp !== otp) {
-            return next(new ApiError(400, "Invalid OTP for the company"));
-        }
-
-        company.isVerified = true;
-        await company.save();
     }
 
     return res
@@ -407,23 +391,6 @@ const updatePassword = asyncHandler(async (req, res, next) => {
         .status(200)
         .json(new ApiResponse(200, {}, "Password updated successfully"));
 });
-
-// TODO: Move this function to a company controller
-const getCompanyByName = asyncHandler(async (req, res ,next)=>{
-    const { companyName } = req.body;
-    
-    if (!companyName) {
-        return res.status(400).json({ message: 'Company Name is required' });
-    };
-    
-    const company = await Company.findOne({ companyName });
-    
-    if (!company) {
-        return next(new ApiError(404, "Company not found"));
-    };
-    
-    return res.status(200).json(company);
-})
 
 const skillsMatch = asyncHandler(async (req, res, next) => {
   
@@ -518,54 +485,6 @@ const userProfile = asyncHandler(async (req, res) => {
 
 })
 
-const companyAndJob = asyncHandler(async (req, res, next) => {
-    // Get pagination parameters from the query string, default to page 1 and 10 items per page
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 3;
-
-    // Calculate the number of items to skip
-    const skip = (page - 1) * limit;
-
-    // Fetch company and job data with pagination
-    const companys = await Company.find().skip(skip).limit(limit);
-    const jobs = await Job.find().skip(skip).limit(limit);
-
-    // Check if either companys or jobs is not found
-    if (!companys.length && !jobs.length) {
-        return next(new ApiError(404, `No companies or jobs found`));
-    }
-
-    // Get total counts for companies and jobs
-    const totalCompanies = await Company.countDocuments();
-    const totalJobs = await Job.countDocuments();
-
-    // Calculate total pages
-    const totalCompanyPages = Math.ceil(totalCompanies / limit);
-    const totalJobPages = Math.ceil(totalJobs / limit);
-
-    // Return the response with both company and job data, and pagination info
-    return res.status(200).json(
-        new ApiResponse(200,{
-            companies: companys,
-            jobs: jobs,
-            companyPagination: {
-                totalCount: totalCompanies,
-                totalPages: totalCompanyPages,
-                currentPage: page,
-                itemsPerPage: limit,
-            },
-            jobPagination: {
-                totalCount: totalJobs,
-                totalPages: totalJobPages,
-                currentPage: page,
-                itemsPerPage: limit,
-            },
-        },
-        `Data fetched successfully`
-    )
-    );
-});
-
 const userData= asyncHandler(async(req, res, next)=>{
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -656,10 +575,8 @@ export {
     verifyForgetOTP,
     updatePassword,
     skillsMatch,
-    getCompanyByName,
     filterData,
     // userProfile
-    companyAndJob,
     userData,
     aplicationForm,
     updateProfile

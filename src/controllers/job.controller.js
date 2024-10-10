@@ -266,6 +266,7 @@ const getJobById = asyncHandler(async (req, res, next) => {
         message: 'Jobs found successfully'
     });
 });
+
 const getJobByCompany = asyncHandler(async (req, res, next) => {
     const { companyName } = req.body;
     // const dataId = await seedJobs();

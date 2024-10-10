@@ -1,6 +1,5 @@
 import { Router } from "express";
 import {
-  companyAndJob,
   forgetPassword,
   login,
   logout,
@@ -12,7 +11,6 @@ import {
   verifyForgetOTP,
   verifyOTP,
   filterData,
-  getCompanyByName,
   updateProfile,
   // getUserAndCompany
 } from "../controllers/user.controller.js";
@@ -21,7 +19,6 @@ import { singleResume } from "../middlewares/multer.middleware.js";
 
 const router = Router();
 
-router.get("/", companyAndJob);
 router.post("/register", singleResume, registerUser);
 router.post("/verify", verifyOTP);
 router.post("/login", login);
@@ -29,7 +26,6 @@ router.put("/resend-otp", resendOTP);
 router.put("/forget-password", forgetPassword);
 router.put("/verify-forget", verifyForgetOTP);
 router.put("/update-password", updatePassword);
-router.get("/companyName", getCompanyByName);
 // router.post('/getUserAndComp',userData)
 // router.get('userProfile',userProfile)
 

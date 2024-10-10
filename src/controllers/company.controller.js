@@ -152,6 +152,7 @@ const verifyOTP = asyncHandler(async (req, res, next) => {
     // Return the newly created company object
     res.status(200).json(new ApiResponse(200, { newCompany }, "Company verified successfully"));
 });
+
 const createProfile = asyncHandler(async (req, res, next) => {
     const { avatar, companyName, email, contactNumber, location } = res.body;
     if (!avatar || !email || !companyName || !contactNumber || !location) {
